@@ -1,5 +1,5 @@
 // Cambia esta URL cuando tengas el backend en Render
-const API_BASE = "http://localhost:8000"; // ej: https://aipl-backend.onrender.com
+const API_BASE = "https://airl.onrender.com" 
 
 // -------- Estado del servidor --------
 const btnStatus = document.getElementById("btn-status");
