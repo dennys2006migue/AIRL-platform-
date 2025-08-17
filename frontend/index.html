@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>AIPL — AI-Driven IoT Robotic Platform</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header>
+    <h1>AIPL — AI-Driven IoT Robotic Platform</h1>
+    <p>Adaptive & Interactive Learning | Research Prototype</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Estado del servidor</h2>
+      <button id="btn-status">Consultar /get_status</button>
+      <pre id="status-box">—</pre>
+    </section>
+
+    <section class="card">
+      <h2>Módulo EDU (demo)</h2>
+      <textarea id="problem" rows="4" placeholder="Escribe un ejercicio o problema..."></textarea>
+      <button id="btn-solve">Resolver con IA (demo)</button>
+      <pre id="solve-box">—</pre>
+    </section>
+
+    <section class="card">
+      <h2>Telemetría (simulada)</h2>
+      <button id="btn-start-telemetry">Empezar simulación</button>
+      <ul id="telemetry-list"></ul>
+    </section>
+  </main>
+
+  <footer>© AIPL — Research Prototype</footer>
+
+  <!-- Socket.IO client -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
+          integrity="sha384-8aHqkRWSd0aX2r8r5W0lqZbOQqYdG8wF0QmV8SxkRk6xK4f3lJ2i6v3b9mHnZtqD"
+          crossorigin="anonymous"></script>
+  <script src="./script.js"></script>
+</body>
+</html>

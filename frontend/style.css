@@ -1,0 +1,12 @@
+:root { color-scheme: light dark; font-family: system-ui, Arial, sans-serif; }
+body { margin: 0; padding: 0 16px 40px; }
+header { padding: 16px 0; border-bottom: 1px solid #ccc; }
+h1 { margin: 0; }
+main { display: grid; gap: 16px; max-width: 900px; margin: 20px auto; }
+.card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; background: rgba(0,0,0,0.02); }
+textarea { width: 100%; }
+button { padding: 8px 12px; border-radius: 8px; border: 1px solid #888; cursor: pointer; }
+pre { background: rgba(0,0,0,0.05); padding: 12px; border-radius: 8px; overflow: auto; }
+ul { list-style: none; padding-left: 0; }
+li { padding: 4px 0; border-bottom: 1px dashed #ccc; }
+footer { text-align: center; margin-top: 24px; color: #666; }
