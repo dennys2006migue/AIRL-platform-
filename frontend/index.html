@@ -13,32 +13,53 @@
   </header>
 
   <main>
+    <!-- Estado del servidor -->
     <section class="card">
       <h2>Estado del servidor</h2>
-      <button id="btn-status">Consultar /get_status</button>
+      <div class="row">
+        <button id="btn-status">Consultar /get_status</button>
+      </div>
       <pre id="status-box">—</pre>
     </section>
 
+    <!-- Módulo EDU -->
     <section class="card">
-      <h2>Módulo EDU (demo)</h2>
+      <h2>Módulo EDU</h2>
       <textarea id="problem" rows="4" placeholder="Escribe un ejercicio o problema..."></textarea>
-      <button id="btn-solve">Resolver con IA (demo)</button>
+      <div class="row">
+        <button id="btn-solve">Resolver con IA</button>
+      </div>
       <pre id="solve-box">—</pre>
     </section>
 
+    <!-- Telemetría con Socket.IO (simulada) -->
     <section class="card">
       <h2>Telemetría (simulada)</h2>
-      <button id="btn-start-telemetry">Empezar simulación</button>
+      <div class="row">
+        <button id="btn-start-telemetry">Empezar simulación</button>
+      </div>
       <ul id="telemetry-list"></ul>
     </section>
-  </main>
+
+    <!-- Emparejado y control IoT vía MQTT -->
+   <section class="card">
+  <h2>Dispositivo IoT (emparejar y conectar)</h2>
+  <div class="row" style="gap:8px; flex-wrap:wrap">
+    <input id="device-id" placeholder="Device ID (ej. robot-001)" />
+    <button id="btn-link">Emparejar</button>
+    <button id="btn-mqtt">Conectar MQTT</button>
+    <button id="btn-led-on">LED ON</button>
+    <button id="btn-led-off">LED OFF</button>
+  </div>
+  <pre id="mqtt-log">—</pre>
+</section>
 
   <footer>© AIPL — Research Prototype</footer>
 
   <!-- Socket.IO client -->
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
-          integrity="sha384-8aHqkRWSd0aX2r8r5W0lqZbOQqYdG8wF0QmV8SxkRk6xK4f3lJ2i6v3b9mHnZtqD"
-          crossorigin="anonymous"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" crossorigin="anonymous"></script>
+  <!-- MQTT over WebSocket (browser) -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script src="./script.js"></script>
 </body>
 </html>
