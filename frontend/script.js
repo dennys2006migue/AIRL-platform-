@@ -1,6 +1,17 @@
 // ===================== CONFIG =====================
 // Cambia esta URL si tu backend tiene otro dominio en Render
-const API_BASE = "https://airl.onrender.com/";
+const API_BASE = "https://airl.onrender.com";
+
+// ===== MQTT CONFIG (elige 1) =====
+// 1) Broker público (rápido para probar)
+let MQTT_WSS_URL = "wss://test.mosquitto.org:8081/mqtt";
+let MQTT_USER = null;
+let MQTT_PASS = null;
+
+// 2) Broker privado (EMQX/HiveMQ) — descomenta y rellena
+// MQTT_WSS_URL = "wss://<tu-instancia>.emqxsl.com:8084/mqtt";
+// MQTT_USER = "tu_usuario";
+// MQTT_PASS = "tu_password";
 
 // =================== /get_status ==================
 const btnStatus = document.getElementById("btn-status");
@@ -88,7 +99,7 @@ function addTelemetryLine(prefix, payload) {
 
 // Conexión al socket del backend
 try {
-  socket = io(API_BASE, { transports: ["websocket", "polling"] });
+  socket = io(API_BASE, { transports: ["websocket"], path: "/socket.io" });
 
   socket.on("connect", () => addTelemetryLine("socket", "conectado"));
   socket.on("disconnect", () => addTelemetryLine("socket", "desconectado"));
@@ -129,3 +140,91 @@ btnStartTelemetry.addEventListener("click", () => {
     socket.emit("telemetry_push", payload);
   }, 1500);
 });
+
+// ============== MQTT pairing & control ==============
+const $ = (id) => document.getElementById(id);
+const logBox = $("mqtt-log");
+const devInput = $("device-id");
+const btnLink = $("btn-link");
+const btnMqtt = $("btn-mqtt");
+const btnLedOn = $("btn-led-on");
+const btnLedOff = $("btn-led-off");
+
+function setDeviceId(id) { localStorage.setItem("aipl_device_id", id); }
+function getDeviceId() { return localStorage.getItem("aipl_device_id") || ""; }
+
+function log(...args) {
+  const txt = args.map(a => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
+  logBox.textContent = (txt + "\n" + logBox.textContent).slice(0, 5000);
+}
+
+btnLink.addEventListener("click", () => {
+  const id = devInput.value.trim();
+  if (!id) return alert("Ingresa un Device ID (ej. robot-001)");
+  setDeviceId(id);
+  log("✅ Emparejado con:", id);
+});
+
+let mqttClient = null;
+
+btnMqtt.addEventListener("click", () => {
+  if (mqttClient) {
+    try { mqttClient.end(true); } catch {}
+    mqttClient = null;
+  }
+  const deviceId = devInput.value.trim() || getDeviceId();
+  if (!deviceId) return alert("Empareja primero un Device ID.");
+
+  const opts = {
+    clientId: "aipl_web_" + Math.random().toString(16).slice(2),
+    clean: true,
+    connectTimeout: 8000,
+    username: MQTT_USER || undefined,
+    password: MQTT_PASS || undefined,
+  };
+
+  mqttClient = mqtt.connect(MQTT_WSS_URL, opts);
+
+  mqttClient.on("connect", () => {
+    log("🟢 MQTT conectado");
+    const teleTopic = `aipl/${deviceId}/telemetry`;
+    mqttClient.subscribe(teleTopic, (err) => {
+      if (err) log("❌ Error al suscribir", err);
+      else log("📡 Subscrito a", teleTopic);
+    });
+    mqttClient.subscribe(`aipl/${deviceId}/status`);
+  });
+
+  mqttClient.on("message", (topic, payload) => {
+    try {
+      const msg = payload.toString();
+      log("📥", topic, msg);
+      addTelemetryLine("mqtt", { topic, msg });
+    } catch (e) {
+      log("⚠️ Error parseando mensaje:", e.message);
+    }
+  });
+
+  mqttClient.on("error", (e) => log("MQTT error:", e.message || e));
+  mqttClient.on("reconnect", () => log("MQTT reconectando…"));
+  mqttClient.on("close", () => log("MQTT cerrado"));
+});
+
+function sendCmd(cmd) {
+  const deviceId = devInput.value.trim() || getDeviceId();
+  if (!deviceId) return alert("Empareja primero un Device ID.");
+  if (!mqttClient || !mqttClient.connected) return alert("Conéctate a MQTT primero.");
+
+  const topic = `aipl/${deviceId}/cmd`;
+  const payload = JSON.stringify({ cmd, ts: Date.now() });
+  mqttClient.publish(topic, payload, { qos: 0 }, (err) => {
+    if (err) log("❌ Error publicando:", err);
+    else log("📤 CMD", topic, payload);
+  });
+}
+
+btnLedOn.addEventListener("click", () => sendCmd("led:on"));
+btnLedOff.addEventListener("click", () => sendCmd("led:off"));
+
+const remembered = getDeviceId();
+if (remembered) devInput.value = remembered;
