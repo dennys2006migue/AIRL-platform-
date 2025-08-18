@@ -1,6 +1,6 @@
 // ===================== CONFIG =====================
 // Cambia esta URL si tu backend tiene otro dominio en Render
-const API_BASE = "https://airl.onrender.com";
+const API_BASE = "https://airl.onrender.com/";
 
 // =================== /get_status ==================
 const btnStatus = document.getElementById("btn-status");
