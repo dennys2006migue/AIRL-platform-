@@ -451,6 +451,32 @@ function connectMQTT(){
       });
     });
 
+mqttClient.on("message", (topic, payload) => {
+  const msg = payload.toString();
+  let parsed = null;
+  try { parsed = JSON.parse(msg); } catch {}
+  addTelemetry(topic, parsed || msg);
+
+  // Ingesta en backend para registro
+  try {
+    const deviceId = (pairDeviceEl?.value?.trim() || pairGet());
+    const kind = topic.endsWith("/telemetry") ? "telemetry"
+               : topic.endsWith("/status")    ? "status"
+               : topic.endsWith("/ack")       ? "ack"
+               : "other";
+    fetch(`${API_BASE}/lab/ingest`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        ts: Date.now(),
+        device_id: deviceId || "",
+        type: kind === "telemetry" ? "telemetry" : "event",
+        kind, data: parsed || msg
+      })
+    }).catch(()=>{});
+  } catch {}
+});
+
+
     mqttClient.on("message", (topic, payload) => {
       const msg = payload.toString();
       try {
@@ -508,3 +534,105 @@ renderSubjects();
 renderPersona();
 renderQuick();
 if (activeSubjectEl) activeSubjectEl.textContent = (SUBJECTS.find(x => x.key === subject)?.label) || "";
+
+// ====== LAB refs ======
+const labView         = document.getElementById("view-lab");
+const labScenarioSel  = document.getElementById("lab-scenario");
+const labParam1       = document.getElementById("lab-param-1");
+const labParam2       = document.getElementById("lab-param-2");
+const labStartBtn     = document.getElementById("lab-start");
+const labStopBtn      = document.getElementById("lab-stop");
+const labStateSpan    = document.getElementById("lab-session-state");
+const labCmdStart     = document.getElementById("lab-cmd-start");
+const labCmdStop      = document.getElementById("lab-cmd-stop");
+const labCmdCalib     = document.getElementById("lab-cmd-calibrate");
+const labCmdLed       = document.getElementById("lab-cmd-led");
+const labRefreshBtn   = document.getElementById("lab-refresh");
+const labExportA      = document.getElementById("lab-export");
+const labTableBody    = document.getElementById("lab-tbody");
+const labAskInput     = document.getElementById("lab-ask");
+const labAskSend      = document.getElementById("lab-ask-send");
+
+function setLabStateText(s) {
+  if (!labStateSpan) return;
+  labStateSpan.textContent = s;
+}
+function renderLabRows(items=[]) {
+  if (!labTableBody) return;
+  labTableBody.innerHTML = "";
+  items.forEach(it => {
+    const tr = document.createElement("tr");
+    const td = (txt) => {
+      const d = document.createElement("td");
+      d.style.padding = "6px"; d.style.borderBottom = "1px solid #eee";
+      d.textContent = typeof txt === "string" ? txt : JSON.stringify(txt);
+      return d;
+    };
+    tr.appendChild(td(new Date(it.ts || Date.now()).toLocaleTimeString()));
+    tr.appendChild(td(it.type || ""));
+    tr.appendChild(td(it.device_id || ""));
+    tr.appendChild(td(it.kind || it.event || ""));
+    tr.appendChild(td(it.data || ""));
+    labTableBody.appendChild(tr);
+  });
+}
+
+if (labStartBtn) labStartBtn.onclick = async () => {
+  const scenario = labScenarioSel?.value || "CUSTOM";
+  const params = {};
+  if (labParam1?.value) params["param1"] = labParam1.value;
+  if (labParam2?.value) params["param2"] = labParam2.value;
+
+  try {
+    const r = await fetch(`${API_BASE}/lab/session/start`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ scenario, params })
+    });
+    const j = await r.json();
+    setLabStateText(j.ok ? `Sesión activa (${j.state.session_id}) — ${j.state.scenario}` : "Error al iniciar sesión");
+    // Envía configuración al dispositivo (opcional)
+    sendCmd("lab:set", { scenario, params });
+  } catch (e) {
+    setLabStateText("Error al iniciar sesión");
+  }
+};
+
+if (labStopBtn) labStopBtn.onclick = async () => {
+  try {
+    const r = await fetch(`${API_BASE}/lab/session/stop`, { method:"POST" });
+    const j = await r.json();
+    setLabStateText("Sesión detenida");
+    // Aviso al dispositivo
+    sendCmd("lab:stop", {});
+  } catch (e) {
+    setLabStateText("Error al detener sesión");
+  }
+};
+
+if (labRefreshBtn) labRefreshBtn.onclick = async () => {
+  try {
+    const r = await fetch(`${API_BASE}/lab/last?n=100`);
+    const j = await r.json();
+    if (j.ok) renderLabRows(j.items);
+  } catch {}
+};
+
+if (labExportA) {
+  labExportA.href = `${API_BASE}/lab/export`; // descarga directa
+}
+
+if (labCmdStart)    labCmdStart.onclick    = () => sendCmd("lab:start");
+if (labCmdStop)     labCmdStop.onclick     = () => sendCmd("lab:stop");
+if (labCmdCalib)    labCmdCalib.onclick    = () => sendCmd("lab:calibrate");
+if (labCmdLed)      labCmdLed.onclick      = () => sendCmd("led:toggle");
+
+if (labAskSend) labAskSend.onclick = () => {
+  const q = labAskInput?.value?.trim();
+  if (!q) return;
+  // Envía la pregunta al mismo flujo de chat EDU
+  if (inputEl) {
+    inputEl.value = q;
+    setActiveView("edu");  // salta al chat
+    setTimeout(() => { document.getElementById("btn-send")?.click(); }, 50);
+  }
+};

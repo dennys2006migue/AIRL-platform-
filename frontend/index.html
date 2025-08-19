@@ -175,6 +175,76 @@
     </main>
   </div>
 
+<!-- ====== Vista LABORATORIO (oculta por defecto) ====== -->
+<section id="view-lab" class="card" style="display:none; margin-top:16px;">
+  <h2>Laboratorio</h2>
+  <div class="muted">Configura un escenario, envía comandos al robot y registra la práctica.</div>
+
+  <!-- Controles de sesión -->
+  <div class="card" style="margin-top:12px;">
+    <h3>Sesión</h3>
+    <div class="row" style="flex-wrap:wrap">
+      <select id="lab-scenario" style="max-width:220px">
+        <option value="MRU">MRU (Movimiento Rectilíneo Uniforme)</option>
+        <option value="MRUA">MRUA (Aceleración constante)</option>
+        <option value="LED_TEST">LED Test</option>
+        <option value="CUSTOM" selected>Personalizado</option>
+      </select>
+
+      <input id="lab-param-1" placeholder="Param 1 (p.ej. velocidad cm/s)" style="max-width:240px">
+      <input id="lab-param-2" placeholder="Param 2 (p.ej. aceleración cm/s^2)" style="max-width:240px">
+
+      <button id="lab-start" class="btn">Iniciar sesión</button>
+      <button id="lab-stop" class="btn ghost">Detener sesión</button>
+    </div>
+    <div class="muted" id="lab-session-state"></div>
+  </div>
+
+  <!-- Controles de dispositivo -->
+  <div class="card" style="margin-top:12px;">
+    <h3>Comandos rápidos</h3>
+    <div class="row" style="flex-wrap:wrap">
+      <button id="lab-cmd-start" class="btn ghost">Start/Go</button>
+      <button id="lab-cmd-stop" class="btn ghost">Stop</button>
+      <button id="lab-cmd-calibrate" class="btn ghost">Calibrar</button>
+      <button id="lab-cmd-led" class="btn ghost">LED Toggle</button>
+    </div>
+  </div>
+
+  <!-- Telemetría y acciones -->
+  <div class="card" style="margin-top:12px;">
+    <h3>Registro (últimos 100)</h3>
+    <div class="row" style="gap:8px; flex-wrap:wrap;">
+      <button id="lab-refresh" class="btn ghost">Actualizar</button>
+      <a id="lab-export" class="btn" href="#" download>Exportar CSV</a>
+      <span class="muted">La ingesta también se hace en vivo al recibir telemetría MQTT.</span>
+    </div>
+    <table id="lab-table" style="width:100%; border-collapse:collapse; margin-top:8px; font-size:14px">
+      <thead>
+        <tr>
+          <th style="text-align:left;border-bottom:1px solid #eee;padding:6px">ts</th>
+          <th style="text-align:left;border-bottom:1px solid #eee;padding:6px">type</th>
+          <th style="text-align:left;border-bottom:1px solid #eee;padding:6px">device</th>
+          <th style="text-align:left;border-bottom:1px solid #eee;padding:6px">kind/event</th>
+          <th style="text-align:left;border-bottom:1px solid #eee;padding:6px">payload</th>
+        </tr>
+      </thead>
+      <tbody id="lab-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Asistente rápido en el Lab -->
+  <div class="card" style="margin-top:12px;">
+    <h3>Asistente del Laboratorio</h3>
+    <div class="row" style="flex-wrap:wrap">
+      <input id="lab-ask" placeholder="Pregunta rápida (p.ej., ¿cómo modelo el MRUA?)">
+      <button id="lab-ask-send" class="btn">Preguntar</button>
+      <span class="muted">Se envía al Módulo EDU en la asignatura activa.</span>
+    </div>
+  </div>
+</section>
+
+
   <!-- Tu lógica -->
   <script defer src="./script.js"></script>
 </body>
