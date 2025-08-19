@@ -90,66 +90,92 @@ function clearChat(showWelcome = true) {
   inputEl.value = "";
 }
 
-// --- Limpia marcas markdown básicas (##, **, etc.)
 function tidyMarkdown(s) {
   return s
-    .replace(/^#+\s*/gm, "")         // ## Título -> Título
-    .replace(/\*\*(.*?)\*\*/g, "$1") // **negrita** -> negrita
-    .replace(/__([^_]+)__/g, "$1")   // __negrita__ -> negrita
-    .replace(/^\s*(\d+)\.\s*(\d+)\.\s*/gm, "$2. ") // arregla "1. 1." duplicado
-    .replace(/^\s*-\s*-\s*/gm, "- ") // arregla "-- texto"
+    .replace(/^#+\s*/gm, "")          // ## Título -> Título
+    .replace(/\*\*(.*?)\*\*/g, "$1")  // **negrita** -> negrita
+    .replace(/__([^_]+)__/g, "$1")    // __negrita__ -> negrita
+    .replace(/^\s*(\d+)\.\s*(\d+)\.\s*/gm, "$2. ") // arregla "1. 1."
+    .replace(/^\s*-\s*-\s*/gm, "- ")
     .trim();
+}
+
+// Des-escapa \\( -> \(, \\[ -> \[, etc. (cuando el backend/JSON deja doble \)
+function unescapeLatexDelimiters(s) {
+  return s
+    .replace(/\\\\\(/g, "\\(")
+    .replace(/\\\\\)/g, "\\)")
+    .replace(/\\\\\[/g, "\\[")
+    .replace(/\\\\\]/g, "\\]")
+    .replace(/\\\\/g, "\\"); // último recurso: reducir dobles a simples
 }
 
 function renderInlineLatex(expr) {
   try {
-    return katex.renderToString(expr, { throwOnError: false, output: "html", strict: "ignore" });
+    return katex.renderToString(expr, {
+      throwOnError: false,
+      output: "html",
+      strict: "ignore"
+    });
   } catch {
     return expr;
   }
 }
 
 function toHeuristicLatex(text) {
-  // Heurísticas suaves: Big-O, sqrt, log, exponentes simples, fracciones (a/b) entre paréntesis
   let t = text;
+
+  // Big-O: O(n log n), O(n^2)...
   t = t.replace(/O\(\s*[^)]+\s*\)/g, (m) => {
     let inner = m.slice(2, -1)
       .replace(/\blog\b/gi, "\\log")
+      .replace(/([a-zA-Z])\s+\\log\s+([a-zA-Z0-9])/g, "$1 \\\\log $2")
       .replace(/([a-zA-Z])\^(\d+)/g, "$1^{\$2}");
     return renderInlineLatex(`O(${inner})`);
   });
+
+  // sqrt(x)
   t = t.replace(/sqrt\s*\(\s*([^)]+)\s*\)/gi, (_, a) => renderInlineLatex(`\\sqrt{${a}}`));
+
+  // log n
   t = t.replace(/\blog\s*\(?\s*([a-zA-Z0-9]+)\s*\)?/gi, (_, a) => renderInlineLatex(`\\log ${a}`));
+
+  // exponentes simples: n^2
   t = t.replace(/\b([a-zA-Z])\^(\d+)\b/g, (_, v, p) => renderInlineLatex(`${v}^{${p}}`));
+
+  // fracciones simples: (a/b)
   t = t.replace(/\(\s*([a-zA-Z0-9]+)\s*\/\s*([a-zA-Z0-9]+)\s*\)/g, (_, a, b) => renderInlineLatex(`\\frac{${a}}{${b}}`));
+
   return t;
 }
 
-// Renderiza math en línea y por bloques si vienen con \(...\), \[...\] o $$...$$
+// Renderiza matemáticas: $$...$$, \[...\], \(...\), $...$ + heurísticos
 function renderMathAware(text) {
-  // 1) Limpia markdown ruidoso
   let s = tidyMarkdown(text);
+  s = unescapeLatexDelimiters(s);
 
-  // 2) Bloques: $$...$$ y \[...\]
+  // Bloques $$...$$
   s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, body) => `<div class="math-block">${renderInlineLatex(body)}</div>`);
+  // Bloques \[...\]
   s = s.replace(/\\\[(.+?)\\\]/gs, (_, body) => `<div class="math-block">${renderInlineLatex(body)}</div>`);
-
-  // 3) Inline: \(...\)
+  // Inline \(...\)
   s = s.replace(/\\\((.+?)\\\)/g, (_, body) => renderInlineLatex(body));
+  // Inline $...$ (simple; evita capturar $$...$$ que ya tratamos)
+  s = s.replace(/(?<!\$)\$([^\$]+?)\$(?!\$)/g, (_, body) => renderInlineLatex(body));
 
-  // 4) Heurísticas (Big‑O, sqrt, log, n^2, etc.)
+  // Heurísticos
   s = toHeuristicLatex(s);
 
   return s;
 }
 
-
 function addAssistantLine(text) {
   const div = document.createElement("div");
   div.className = "msg"; // globo del asistente
-  const paragraphs = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
 
+  const paragraphs = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
   div.innerHTML = paragraphs.map(p => `<p>${renderMathAware(p)}</p>`).join("");
+
   msgsEl.appendChild(div);
   msgsEl.scrollTop = msgsEl.scrollHeight;
 }
