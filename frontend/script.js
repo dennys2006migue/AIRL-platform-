@@ -44,13 +44,13 @@ function renderSubjects() {
     btn.textContent = s.label;
     btn.className = s.key === subject ? "active" : "";
     btn.onclick = () => {
-      subject = s.key;
-      localStorage.setItem("aipl_subject", subject);
-      renderSubjects();
-      renderPersona();
-      renderQuick();
-      addAssistantLine(`Persona cambiada a ${s.label}. ¿En qué te ayudo?`);
-    };
+  subject = s.key;
+  localStorage.setItem("aipl_subject", subject);
+  renderSubjects();
+  renderPersona();
+  renderQuick();
+  clearChat(true);         
+};
     subjectsEl.appendChild(btn);
   });
   activeSubjectEl.textContent = (SUBJECTS.find(x=>x.key===subject)?.label) || "Cálculo";
@@ -76,6 +76,73 @@ function renderQuick() {
     b.onclick = () => { inputEl.value = inputEl.value ? inputEl.value + " " + txt : txt; inputEl.focus(); };
     quickEl.appendChild(b);
   });
+}
+
+function clearChat(showWelcome = true) {
+  messages = [];
+  msgsEl.innerHTML = "";
+  if (showWelcome) {
+    const div = document.createElement("div");
+    div.className = "muted";
+    div.innerHTML = 'Hola, soy <b>Llama Roja</b>. Cuéntame qué necesitas.';
+    msgsEl.appendChild(div);
+  }
+  inputEl.value = "";
+}
+
+// --- Limpia marcas markdown básicas (##, **, etc.)
+function stripMarkdown(s) {
+  return s
+    .replace(/^#+\s*/gm, "")   // ## Titulo -> Titulo
+    .replace(/\*\*/g, "")      // **negrita** -> negrita
+    .trim();
+}
+
+
+// --- Renderiza una fórmula LaTeX a HTML (o devuelve el texto si falla)
+function renderInline(expr) {
+  try {
+    return katex.renderToString(expr, { throwOnError: false, output: "html", strict: "ignore" });
+  } catch {
+    return expr;
+  }
+}
+
+// --- Reemplaza en un texto expresiones comunes por su versión KaTeX
+function replaceInlineMath(text) {
+  let html = stripMarkdown(text);
+
+  // Big-O: O(n log n), O(n^2)...
+  html = html.replace(/O\(\s*[^)]+\s*\)/g, (m) => {
+    let inner = m.slice(2, -1)                        // contenido entre O( )
+      .replace(/\blog\b/gi, "\\log")                  // log -> \log
+      .replace(/([a-zA-Z])\^(\d+)/g, "$1^{\$2}");     // n^2 -> n^{2}
+    return renderInline(`O(${inner})`);
+  });
+
+  // sqrt(x) -> \sqrt{x}
+  html = html.replace(/sqrt\s*\(\s*([^)]+)\s*\)/gi, (_, a) => renderInline(`\\sqrt{${a}}`));
+
+  // log n -> \log n
+  html = html.replace(/\blog\s*\(?\s*([a-zA-Z0-9]+)\s*\)?/gi, (_, a) => renderInline(`\\log ${a}`));
+
+  // exponentes simples: n^2 -> n^{2}
+  html = html.replace(/\b([a-zA-Z])\^(\d+)\b/g, (_, v, p) => renderInline(`${v}^{${p}}`));
+
+  // fracciones simples entre paréntesis: (a/b) -> \frac{a}{b}
+  html = html.replace(/\(\s*([a-zA-Z0-9]+)\s*\/\s*([a-zA-Z0-9]+)\s*\)/g, (_, a, b) => renderInline(`\\frac{${a}}{${b}}`));
+
+  return html;
+}
+
+// --- NUEVA versión: muestra mensaje del asistente como párrafos con matemáticas bonitas
+function addAssistantLine(text) {
+  const div = document.createElement("div");
+  div.className = "msg"; // globo del asistente (NO .user)
+  const paragraphs = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  div.innerHTML = paragraphs.map(p => `<p>${replaceInlineMath(p)}</p>`).join("");
+  msgsEl.appendChild(div);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 
 // ================== Chat UI helpers =================
