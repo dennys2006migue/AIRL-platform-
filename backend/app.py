@@ -1,10 +1,20 @@
 import os
 import time
+import eventlet
+eventlet.monkey_patch() 
+
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from openai import OpenAI
+
+# ====== LAB: almacenamiento simple en memoria ======
+from collections import deque
+import csv
+from io import StringIO
+from time import time
+
 
 # -------- Cargar variables de entorno primero --------
 load_dotenv()
@@ -26,9 +36,97 @@ STATE = {
 }
 
 # -------- Rutas HTTP --------
+LAB_STATE = {
+    "session_active": False,
+    "session_id": None,
+    "started_at": None,
+    "scenario": None,            # e.g., "MRU", "MRUA", "LED_TEST"
+    "params": {},                # dict de parámetros del escenario
+}
+LAB_DATA = deque(maxlen=5000)    # buffer circular de telemetría/acciones
+
+def _now():
+    return int(time()*1000)
+
+@app.route("/lab/session/start", methods=["POST"])
+def lab_session_start():
+    data = request.get_json(force=True) or {}
+    scenario = data.get("scenario") or "CUSTOM"
+    params = data.get("params") or {}
+    LAB_STATE.update({
+        "session_active": True,
+        "session_id": f"lab_{_now()}",
+        "started_at": _now(),
+        "scenario": scenario,
+        "params": params
+    })
+    # marca en la traza
+    LAB_DATA.append({
+        "ts": _now(), "type": "event", "event": "session_start",
+        "scenario": scenario, "params": params
+    })
+    return {"ok": True, "state": LAB_STATE}
+
+@app.route("/lab/session/stop", methods=["POST"])
+def lab_session_stop():
+    if LAB_STATE["session_active"]:
+        LAB_DATA.append({"ts": _now(), "type": "event", "event": "session_stop"})
+    LAB_STATE["session_active"] = False
+    return {"ok": True, "state": LAB_STATE}
+
+@app.route("/lab/ingest", methods=["POST"])
+def lab_ingest():
+    """
+    Espera JSON de telemetría/acciones, p.ej.:
+    { "device_id":"robot-001", "kind":"telemetry",
+      "data": {"temp":24.5,"rssi":-60}, "ts": 1724000000000 }
+    """
+    item = request.get_json(force=True) or {}
+    item.setdefault("ts", _now())
+    item.setdefault("type", "telemetry")
+    LAB_DATA.append(item)
+    return {"ok": True, "n": len(LAB_DATA)}
+
+@app.route("/lab/last")
+def lab_last():
+    # últimos N items
+    N = int(request.args.get("n", 100))
+    return {"ok": True, "items": list(LAB_DATA)[-N:]}
+
+@app.route("/lab/export")
+def lab_export():
+    # Exporta CSV simple (ts,type,device_id,kind,data_json)
+    si = StringIO()
+    writer = csv.writer(si)
+    writer.writerow(["ts","type","device_id","kind","payload"])
+    for it in LAB_DATA:
+        writer.writerow([
+            it.get("ts"),
+            it.get("type"),
+            it.get("device_id",""),
+            it.get("kind",""),
+            it.get("data", it.get("event", "")),
+        ])
+    csv_bytes = si.getvalue().encode("utf-8")
+    # Respuesta como archivo
+    from flask import Response
+    return Response(
+        csv_bytes,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=lab_data.csv"}
+    )
+
 @app.route("/")
 def root():
     return "AIPL backend OK. Endpoints: /health, /get_status, /edu/solve"
+
+@app.route("/debug/ia")
+def debug_ia():
+    return {
+        "ia_env_present": bool(os.getenv("OPENAI_API_KEY")),
+        "client_initialized": client is not None,
+        "model": os.getenv("OPENAI_MODEL", "")
+    }
 
 @app.route("/health")
 def health():
