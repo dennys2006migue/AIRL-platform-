@@ -44,20 +44,22 @@ function renderSubjects() {
     btn.textContent = s.label;
     btn.className = s.key === subject ? "active" : "";
     btn.onclick = () => {
-  subject = s.key;
-  localStorage.setItem("aipl_subject", subject);
-  renderSubjects();
-  renderPersona();
-  renderQuick();
-  clearChat(true);         
-};
+      subject = s.key;
+      localStorage.setItem("aipl_subject", subject);
+      renderSubjects();
+      renderPersona();
+      renderQuick();
+      clearChat(true);
+    };
     subjectsEl.appendChild(btn);
   });
-  activeSubjectEl.textContent = (SUBJECTS.find(x=>x.key===subject)?.label) || "Cálculo";
+  activeSubjectEl.textContent = (SUBJECTS.find(x => x.key === subject)?.label) || "Cálculo";
 }
+
 function renderPersona() {
-  personaEl.textContent = SUBJECTS.find(x=>x.key===subject)?.persona || "";
+  personaEl.textContent = SUBJECTS.find(x => x.key === subject)?.persona || "";
 }
+
 function renderQuick() {
   quickEl.innerHTML = "";
   const chipsBySubject = {
@@ -70,7 +72,7 @@ function renderQuick() {
   };
   (chipsBySubject[subject] || []).forEach(txt => {
     const b = document.createElement("button");
-    b.className = "subjects"; // simple pill style
+    b.className = "subjects";
     b.style = "border:1px solid #e5e5e5;border-radius:14px;padding:6px 10px;background:#fff";
     b.textContent = txt;
     b.onclick = () => { inputEl.value = inputEl.value ? inputEl.value + " " + txt : txt; inputEl.focus(); };
@@ -172,43 +174,37 @@ function renderMathAware(text) {
   return s;
 }
 
-// --- reemplaza SOLO esta función en tu chat:
-function addAssistantLine(text) {
-  const div = document.createElement("div");
-  div.className = "msg";
-
-  katexReady(() => {
-    const html = renderMathAware(text);  // procesa TODO el texto primero
-    const parts = html.split(/\n+/).map(s => s.trim()).filter(Boolean);
-    // No envolvemos bloques .math-block en <p>
-    div.innerHTML = parts.map(p => p.startsWith('<div class="math-block">') ? p : `<p>${p}</p>`).join("");
-    msgsEl.appendChild(div);
-    msgsEl.scrollTop = msgsEl.scrollHeight;
-  });
-}
-
-
-function addAssistantLine(text) {
-  const div = document.createElement("div");
-  div.className = "msg"; // globo del asistente
-
-  const paragraphs = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
-  div.innerHTML = paragraphs.map(p => `<p>${renderMathAware(p)}</p>`).join("");
-
-  msgsEl.appendChild(div);
-  msgsEl.scrollTop = msgsEl.scrollHeight;
-}
-
 // ================== Chat UI helpers =================
 function addLine(role, text) {
   const div = document.createElement("div");
-  div.className = "msg " + (role === "user" ? "user" : "assistant");
-  div.textContent = text;
-  msgsEl.appendChild(div);
-  msgsEl.scrollTop = msgsEl.scrollHeight;
+  div.className = "msg " + (role === "user" ? "user" : "");
+
+  if (role === "assistant") {
+    // Esperar a que KaTeX esté listo
+    katexReady(() => {
+      const html = renderMathAware(text);
+      const paragraphs = html.split(/\n+/).map(s => s.trim()).filter(Boolean);
+      div.innerHTML = paragraphs
+        .map(p => p.startsWith('<div class="math-block">') ? p : `<p>${p}</p>`)
+        .join("");
+      msgsEl.appendChild(div);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    });
+  } else {
+    // Mensaje del usuario: texto plano
+    div.textContent = text;
+    msgsEl.appendChild(div);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
 }
-function addAssistantLine(text) { addLine("assistant", text); }
-function addUserLine(text) { addLine("user", text); }
+
+function addAssistantLine(text) {
+  addLine("assistant", text);
+}
+
+function addUserLine(text) {
+  addLine("user", text);
+}
 
 // ================== Send message ====================
 async function sendMessage() {
@@ -217,8 +213,6 @@ async function sendMessage() {
   addUserLine(q);
   inputEl.value = "";
 
-  // Llama a tu backend /edu/solve (ya existe en Flask)
-  // Ver app.py: acepta { problem, subject } y responde pasos/result (demo si no hay API key). :contentReference[oaicite:5]{index=5}
   try {
     const res = await fetch(`${API_BASE}/edu/solve`, {
       method: "POST",
@@ -232,7 +226,7 @@ async function sendMessage() {
     const data = await res.json();
     if (!data.success) throw new Error(data.error || "respuesta no exitosa");
 
-    const steps = (data.solution?.steps || []).map((s,i)=> `${i+1}. ${s}`).join("\n");
+    const steps = (data.solution?.steps || []).map((s, i) => `${i + 1}. ${s}`).join("\n");
     const result = data.solution?.result ? `\n\n${data.solution.result}` : "";
     addAssistantLine(steps + result || "No se recibieron pasos.");
   } catch (e) {
@@ -245,7 +239,7 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
 let listening = false;
 
-function updateVoiceHint(msg, show=true) {
+function updateVoiceHint(msg, show = true) {
   voiceHint.textContent = msg;
   voiceHint.style.display = show ? "block" : "none";
 }
@@ -260,7 +254,7 @@ function startVoice() {
 
   rec.onresult = (ev) => {
     let interim = "", finalTxt = "";
-    for (let i=ev.resultIndex;i<ev.results.length;i++){
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
       const t = ev.results[i][0].transcript;
       if (ev.results[i].isFinal) finalTxt += t;
       else interim += t;
@@ -285,11 +279,11 @@ function stopVoice() {
 
 // ================== Wire up =========================
 btnSend.addEventListener("click", sendMessage);
-inputEl.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendMessage(); }});
-btnVoice.addEventListener("click", ()=> listening ? stopVoice() : startVoice());
+inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+btnVoice.addEventListener("click", () => listening ? stopVoice() : startVoice());
 
 // Inicial
 renderSubjects();
 renderPersona();
 renderQuick();
-activeSubjectEl.textContent = (SUBJECTS.find(x=>x.key===subject)?.label) || "";
+activeSubjectEl.textContent = (SUBJECTS.find(x => x.key === subject)?.label) || "";
