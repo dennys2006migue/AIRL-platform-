@@ -4,53 +4,74 @@
   <meta charset="utf-8" />
   <title>AIPL — EDU Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-<!-- KaTeX CSS + JS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+
+  <!-- KaTeX CSS + JS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+
+  <!-- MQTT.js para navegador -->
+  <script defer src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
   <style>
-    /* Tarjetas de pasos */
-.assistant-steps { display:flex; flex-direction:column; gap:12px; }
-.steps-container { display:flex; flex-direction:column; gap:10px; }
-.step-card { background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:12px; }
-.step-card.result { border-color:#c9e8cd; background:#f3fbf4; }
-.step-title { font-weight:600; margin-bottom:6px; }
-.steps-controls { display:flex; gap:8px; margin-top:4px; }
-.steps-controls button { padding:6px 12px; border:1px solid #ddd; border-radius:8px; background:#fff; cursor:pointer; }
-.steps-controls button:hover { background:#f3f3f3; }
-    .msg p { margin: 6px 0; line-height: 1.45; }
-    .msg .katex { font-size: 14px; }
-    .math-block { margin: 6px 0; } 
     :root { --bg:#f6f6f6; --fg:#111; --muted:#666; --card:#fff; --border:#e5e5e5; --accent:#111; }
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Arial}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Arial}
+
     header{padding:16px 24px;border-bottom:1px solid var(--border);background:#fff;display:flex;align-items:center;gap:12px}
     .wrap{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 66px)}
     aside{border-right:1px solid var(--border);background:#fff;padding:16px;display:flex;flex-direction:column}
     .brand{display:flex;align-items:center;gap:10px;margin-bottom:16px}
-    .nav button{width:100%;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid transparent;background:transparent}
+
+    .nav button{width:100%;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid transparent;background:transparent;cursor:pointer}
     .nav button.active,.nav button:hover{background:#f3f3f3;border-color:var(--border)}
+    .nav .section{margin-top:8px;color:var(--muted);font-size:12px}
+
     main{padding:20px}
     .grid{display:grid;grid-template-columns:1fr 360px;gap:20px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px}
+    .row{display:flex;align-items:center;gap:8px}
+
     .subjects{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
-    .subjects button{border:1px solid var(--border);border-radius:14px;padding:10px 12px;background:#fff}
+    .subjects button{border:1px solid var(--border);border-radius:14px;padding:10px 12px;background:#fff;cursor:pointer}
     .subjects button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
     .chat{display:flex;flex-direction:column;height:60vh}
     .msgs{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:6px}
     .msg{max-width:75%;padding:10px 12px;border-radius:14px;background:#f3f3f3}
     .msg.user{margin-left:auto;background:#111;color:#fff}
     .composer{display:flex;gap:8px;border-top:1px solid var(--border);padding-top:12px;margin-top:12px}
-    input,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font:inherit}
+    input,textarea,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font:inherit;background:#fff}
     .btn{padding:10px 14px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
     .btn.ghost{background:#fff;color:#111;border:1px solid var(--border)}
     .muted{color:var(--muted);font-size:12px}
-    @media(max-width:1000px){.grid{grid-template-columns:1fr} .subjects{grid-template-columns:repeat(3,1fr)} .wrap{grid-template-columns:1fr}}
+
+    /* Tarjetas de pasos */
+    .assistant-steps { display:flex; flex-direction:column; gap:12px; }
+    .steps-container { display:flex; flex-direction:column; gap:10px; }
+    .step-card { background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:12px; }
+    .step-card.result { border-color:#c9e8cd; background:#f3fbf4; }
+    .step-title { font-weight:600; margin-bottom:6px; }
+    .steps-controls { display:flex; gap:8px; margin-top:4px; }
+    .steps-controls button { padding:6px 12px; border:1px solid #ddd; border-radius:8px; background:#fff; cursor:pointer; }
+    .steps-controls button:hover { background:#f3f3f3; }
+
+    /* Párrafos y fórmulas dentro del chat */
+    .msg p { margin: 6px 0; line-height: 1.45; }
+    .msg .katex { font-size: 14px; }
+    .math-block { margin: 6px 0; }
+
+    @media(max-width:1000px){
+      .grid{grid-template-columns:1fr}
+      .subjects{grid-template-columns:repeat(3,1fr)}
+      .wrap{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
   <header>
     <!-- Mascota (Llama Roja / Alpaca) -->
     <div style="width:40px;height:40px;border-radius:999px;overflow:hidden">
-      <svg viewBox="0 0 200 200" width="40" height="40">
+      <svg viewBox="0 0 200 200" width="40" height="40" aria-hidden="true">
         <defs>
           <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#ff4d4d"/><stop offset="100%" stop-color="#b30000"/>
@@ -74,10 +95,11 @@
       <div class="brand">
         <div style="font-weight:700">Llama Roja</div>
       </div>
-      <div class="nav">
-        <button class="active">🎓 Módulo EDU</button>
+      <div class="nav" id="sidebar">
+        <button id="nav-edu" class="active" onclick="setActiveView('edu')">🎓 Módulo EDU</button>
+        <div class="section">Herramientas</div>
+        <button id="nav-pair" onclick="setActiveView('emparejar')">🔗 Emparejar</button>
         <button title="Pronto">🖥️ Servidor</button>
-        <button title="Pronto">🔗 Emparejar</button>
         <button title="Pronto">🔬 Laboratorio</button>
         <button title="Pronto">⚙️ Ajustes</button>
       </div>
@@ -85,44 +107,75 @@
     </aside>
 
     <main>
-      <!-- Subjects -->
-      <section class="card">
+      <!-- ====== Vista EDU ====== -->
+      <section id="view-edu" class="card">
         <h2 style="margin:0 0 8px 0">Asignaturas</h2>
         <div class="subjects" id="subjects"></div>
         <div class="muted" style="margin-top:8px">Persona activa: <span id="active-subject"></span></div>
+
+        <div class="grid" style="margin-top:16px">
+          <!-- Chat -->
+          <section class="card">
+            <h3 style="margin:0 0 8px 0">Asistente especialista</h3>
+            <div class="chat">
+              <div class="msgs" id="msgs">
+                <div class="muted">Hola, soy <b>Llama Roja</b>. Cuéntame qué necesitas.</div>
+              </div>
+              <div class="composer">
+                <input id="input" placeholder="Escribe tu ejercicio o pregunta…" />
+                <button id="btn-voice" class="btn ghost" title="Hablar">🎤</button>
+                <button id="btn-send" class="btn">Enviar</button>
+              </div>
+              <div class="muted" id="voice-hint" style="margin-top:6px; display:none"></div>
+            </div>
+          </section>
+
+          <!-- Persona panel -->
+          <section class="card">
+            <h3 style="margin:0 0 8px 0">Persona experta</h3>
+            <p class="muted" id="persona"></p>
+            <h4 style="margin:12px 0 6px 0">Accesos rápidos</h4>
+            <div id="quick" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+            <div class="muted" style="margin-top:10px">
+              Consejo: añade nivel, objetivo y restricciones para mejores respuestas.
+            </div>
+          </section>
+        </div>
       </section>
 
-      <div class="grid">
-        <!-- Chat -->
-        <section class="card">
-          <h3 style="margin:0 0 8px 0">Asistente especialista</h3>
-          <div class="chat">
-            <div class="msgs" id="msgs">
-              <div class="muted">Hola, soy <b>Llama Roja</b>. Cuéntame qué necesitas.</div>
-            </div>
-            <div class="composer">
-              <input id="input" placeholder="Escribe tu ejercicio o pregunta…" />
-              <button id="btn-voice" class="btn ghost" title="Hablar">🎤</button>
-              <button id="btn-send" class="btn">Enviar</button>
-            </div>
-            <div class="muted" id="voice-hint" style="margin-top:6px; display:none"></div>
-          </div>
-        </section>
+      <!-- ====== Vista EMPAREJAR (oculta por defecto) ====== -->
+      <section id="view-pair" class="card" style="display:none">
+        <h2>Emparejar dispositivo (ESP32)</h2>
 
-        <!-- Persona panel -->
-        <section class="card">
-          <h3 style="margin:0 0 8px 0">Persona experta</h3>
-          <p class="muted" id="persona"></p>
-          <h4 style="margin:12px 0 6px 0">Accesos rápidos</h4>
-          <div id="quick" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-          <div class="muted" style="margin-top:10px">
-            Consejo: añade nivel, objetivo y restricciones para mejores respuestas.
-          </div>
-        </section>
-      </div>
+        <div class="row" style="flex-wrap:wrap">
+          <input id="pair-device-id" placeholder="Device ID (ej. robot-001)" style="max-width:240px" />
+          <button id="pair-save" class="btn ghost">Guardar ID</button>
+
+          <select id="mqtt-broker" class="btn ghost" style="max-width:320px">
+            <option value="wss://test.mosquitto.org:8081/mqtt">Mosquitto público (WSS)</option>
+            <!-- Más adelante: EMQX/HiveMQ privados -->
+          </select>
+
+          <button id="mqtt-connect" class="btn">Conectar MQTT</button>
+          <span id="mqtt-status" class="muted">desconectado</span>
+        </div>
+
+        <div class="row" style="flex-wrap:wrap; margin-top:8px">
+          <button id="cmd-ping" class="btn ghost">Ping</button>
+          <button id="cmd-led-on" class="btn ghost">LED ON</button>
+          <button id="cmd-led-off" class="btn ghost">LED OFF</button>
+        </div>
+
+        <h3 style="margin-top:12px">Telemetría</h3>
+        <ul id="pair-telemetry" style="max-height:220px;overflow:auto;border:1px solid #eee;border-radius:10px;padding:8px"></ul>
+
+        <h3 style="margin-top:12px">Log</h3>
+        <pre id="pair-log" style="max-height:160px;overflow:auto;border:1px solid #eee;border-radius:10px;padding:8px">—</pre>
+      </section>
     </main>
   </div>
 
-<script defer src="./script.js"></script>
+  <!-- Tu lógica -->
+  <script defer src="./script.js"></script>
 </body>
 </html>

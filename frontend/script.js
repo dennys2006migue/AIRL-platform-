@@ -1,14 +1,14 @@
-// ===================== CONFIG =====================
-const API_BASE = "https://airl.onrender.com"; // <-- Pon tu URL de backend Render
+/* ===================== CONFIG ===================== */
+const API_BASE = "https://airl.onrender.com"; // Backend Flask (Render)
 
-// ================== Subjects & Persona =============
+/* ================== Subjects & Persona ============ */
 const SUBJECTS = [
-  { key: "calculo", label: "Cálculo", persona: "Eres experto en cálculo diferencial e integral. Explica con pasos y ejemplos." },
-  { key: "fisica", label: "Física", persona: "Eres físico docente. Usa el SI, leyes y ejemplos prácticos." },
-  { key: "algebra_lineal", label: "Álgebra Lineal", persona: "Eres experto en vectores, matrices y espacios vectoriales." },
-  { key: "superior", label: "Matemática Superior", persona: "Eres matemático. Razonamiento riguroso y demostraciones claras." },
-  { key: "ingles", label: "Inglés", persona: "Eres profesor de inglés. Corrige gramática, vocabulario y da ejemplos." },
-  { key: "programacion", label: "Programación", persona: "Eres ingeniero de software. Código claro y buenas prácticas." },
+  { key: "calculo",         label: "Cálculo",           persona: "Eres experto en cálculo diferencial e integral. Explica con pasos y ejemplos." },
+  { key: "fisica",          label: "Física",            persona: "Eres físico docente. Usa el SI, leyes y ejemplos prácticos." },
+  { key: "algebra_lineal",  label: "Álgebra Lineal",    persona: "Eres experto en vectores, matrices y espacios vectoriales." },
+  { key: "superior",        label: "Matemática Superior", persona: "Eres matemático. Razonamiento riguroso y demostraciones claras." },
+  { key: "ingles",          label: "Inglés",            persona: "Eres profesor de inglés. Corrige gramática, vocabulario y da ejemplos." },
+  { key: "programacion",    label: "Programación",      persona: "Eres ingeniero de software. Código claro y buenas prácticas." },
 ];
 
 const SUBJECT_TO_BACKEND = {
@@ -17,208 +17,205 @@ const SUBJECT_TO_BACKEND = {
   algebra_lineal: "álgebra lineal",
   superior: "matemáticas",
   ingles: "inglés",
-  programacion: "programación"
+  programacion: "programación",
 };
 
-// ===================== DOM refs ====================
-const $ = (id) => document.getElementById(id);
-const subjectsEl = $("subjects");
+/* ===================== DOM refs ==================== */
+const $           = (id) => document.getElementById(id);
+const subjectsEl  = $("subjects");
 const activeSubjectEl = $("active-subject");
-const personaEl = $("persona");
-const quickEl = $("quick");
-const msgsEl = $("msgs");
-const inputEl = $("input");
-const btnSend = $("btn-send");
-const btnVoice = $("btn-voice");
-const voiceHint = $("voice-hint");
+const personaEl   = $("persona");
+const quickEl     = $("quick");
+const msgsEl      = $("msgs");
+const inputEl     = $("input");
+const btnSend     = $("btn-send");
+const btnVoice    = $("btn-voice");
+const voiceHint   = $("voice-hint");
 
-// ================== State ==========================
-let subject = localStorage.getItem("aipl_subject") || "calculo";
+/* ====== Vistas ====== */
+const viewEdu  = $("view-edu")  || document.querySelector(".card"); // fallback si no hay id
+const viewPair = $("view-pair"); // debe existir para Emparejar
+
+function setActiveView(key) {
+  try {
+    if (!viewEdu || !viewPair) {
+      console.warn("setActiveView: faltan contenedores de vista (view-edu o view-pair).");
+      return;
+    }
+    if (key === "emparejar") {
+      viewEdu.style.display  = "none";
+      viewPair.style.display = "block";
+    } else {
+      viewEdu.style.display  = "block";
+      viewPair.style.display = "none";
+    }
+  } catch (e) {
+    console.error("Error setActiveView:", e);
+  }
+}
+window.setActiveView = setActiveView; // para llamar desde el sidebar
+setActiveView("edu");
+
+/* ================== State ========================== */
+let subject  = localStorage.getItem("aipl_subject") || "calculo";
 let messages = [];
 
-// ================== Render Subjects ================
+/* ================== Render Subjects ================ */
 function renderSubjects() {
+  if (!subjectsEl) return;
   subjectsEl.innerHTML = "";
-  SUBJECTS.forEach(s => {
+  SUBJECTS.forEach((s) => {
     const btn = document.createElement("button");
     btn.textContent = s.label;
-    btn.className = s.key === subject ? "active" : "";
+    btn.className = (s.key === subject ? "active" : "");
     btn.onclick = () => {
-      subject = s.key;
-      localStorage.setItem("aipl_subject", subject);
-      renderSubjects();
-      renderPersona();
-      renderQuick();
-      clearChat(true);
+      try {
+        subject = s.key;
+        localStorage.setItem("aipl_subject", subject);
+        renderSubjects();
+        renderPersona();
+        renderQuick();
+        clearChat(true);
+        setActiveView("edu");
+      } catch (e) {
+        console.error("Error cambiando asignatura:", e);
+      }
     };
     subjectsEl.appendChild(btn);
   });
-  activeSubjectEl.textContent = (SUBJECTS.find(x => x.key === subject)?.label) || "Cálculo";
+  if (activeSubjectEl) {
+    activeSubjectEl.textContent = (SUBJECTS.find(x => x.key === subject)?.label) || "Cálculo";
+  }
 }
 
 function renderPersona() {
+  if (!personaEl) return;
   personaEl.textContent = SUBJECTS.find(x => x.key === subject)?.persona || "";
 }
 
 function renderQuick() {
+  if (!quickEl) return;
   quickEl.innerHTML = "";
   const chipsBySubject = {
-    calculo: ["Deriva x^3", "Integra x^2", "Límites básicos"],
-    fisica: ["Explica V=IR", "MRU vs MRUA", "Energía potencial"],
+    calculo:        ["Deriva x^3", "Integra x^2", "Límites básicos"],
+    fisica:         ["Explica V=IR", "MRU vs MRUA", "Energía potencial"],
     algebra_lineal: ["Multiplica matrices 2x2", "Autovalores", "Base y dimensión"],
-    superior: ["Demuestra la continuidad", "Convergencia de serie", "Topología básica"],
-    ingles: ["Past Perfect vs Past Simple", "Condicionales", "Phrasal verbs"],
-    programacion: ["Complejidad de quicksort", "Pilas y colas", "Promise vs async/await"]
+    superior:       ["Demuestra la continuidad", "Convergencia de serie", "Topología básica"],
+    ingles:         ["Past Perfect vs Past Simple", "Condicionales", "Phrasal verbs"],
+    programacion:   ["Complejidad de quicksort", "Pilas y colas", "Promise vs async/await"],
   };
-  (chipsBySubject[subject] || []).forEach(txt => {
+  (chipsBySubject[subject] || []).forEach((txt) => {
     const b = document.createElement("button");
     b.className = "subjects";
     b.style = "border:1px solid #e5e5e5;border-radius:14px;padding:6px 10px;background:#fff";
     b.textContent = txt;
-    b.onclick = () => { inputEl.value = inputEl.value ? inputEl.value + " " + txt : txt; inputEl.focus(); };
+    b.onclick = () => {
+      if (!inputEl) return;
+      inputEl.value = inputEl.value ? inputEl.value + " " + txt : txt;
+      inputEl.focus();
+    };
     quickEl.appendChild(b);
   });
 }
 
 function clearChat(showWelcome = true) {
   messages = [];
-  msgsEl.innerHTML = "";
-  if (showWelcome) {
-    const div = document.createElement("div");
-    div.className = "muted";
-    div.innerHTML = 'Hola, soy <b>Llama Roja</b>. Cuéntame qué necesitas.';
-    msgsEl.appendChild(div);
+  if (msgsEl) {
+    msgsEl.innerHTML = "";
+    if (showWelcome) {
+      const div = document.createElement("div");
+      div.className = "muted";
+      div.innerHTML  = 'Hola, soy <b>Llama Roja</b>. Cuéntame qué necesitas.';
+      msgsEl.appendChild(div);
+    }
   }
-  inputEl.value = "";
+  if (inputEl) inputEl.value = "";
 }
 
-// --- util: espera a que KaTeX esté disponible
+/* ========== KaTeX, limpieza y helpers matemáticos ========= */
 function katexReady(cb) {
   if (window.katex) return cb();
   const t = setInterval(() => {
     if (window.katex) { clearInterval(t); cb(); }
   }, 50);
 }
-
-// --- limpia markdown y numeraciones ruidosas
 function tidyMarkdown(s) {
-  return s
+  return (s || "")
     .replace(/^#+\s*/gm, "")                         // ## Título -> Título
     .replace(/\*\*(.*?)\*\*/g, "$1")                 // **negrita** -> negrita
     .replace(/__([^_]+)__/g, "$1")                   // __negrita__ -> negrita
     .replace(/^\s*(\d+)\.\s*(\d+)\.\s*/gm, "$2. ")   // arregla "1. 1."
-    // arregla bloques LaTeX partidos por líneas numeradas:
-    .replace(/^\s*\d+\.\s*\\\[$/gm, "\\[")
+    .replace(/^\s*\d+\.\s*\\\[$/gm, "\\[")           // arregla bloques partidos
     .replace(/^\s*\d+\.\s*\\\]$/gm, "\\]")
     .trim();
 }
-
-// --- des-escapa delimitadores cuando llegan doble-escapados
 function unescapeLatexDelimiters(s) {
-  return s
+  return (s || "")
     .replace(/\\\\\(/g, "\\(")
     .replace(/\\\\\)/g, "\\)")
     .replace(/\\\\\[/g, "\\[")
     .replace(/\\\\\]/g, "\\]")
     .replace(/\\\\/g, "\\");
 }
-
 function renderInlineLatex(expr) {
   try {
-    return katex.renderToString(expr, {
-      throwOnError: false,
-      output: "html",
-      strict: "ignore"
-    });
-  } catch {
-    return expr; // fallback
-  }
+    return katex.renderToString(expr, { throwOnError:false, output:"html", strict:"ignore" });
+  } catch { return expr; }
 }
-
-// heurísticos: Big-O, sqrt, log, n^2, (a/b)
 function toHeuristicLatex(text) {
-  let t = text;
-
+  let t = text || "";
   t = t.replace(/O\(\s*[^)]+\s*\)/g, (m) => {
     let inner = m.slice(2, -1)
       .replace(/\blog\b/gi, "\\log")
       .replace(/([a-zA-Z])\^(\d+)/g, "$1^{\\$2}");
     return renderInlineLatex(`O(${inner})`);
   });
-
   t = t.replace(/sqrt\s*\(\s*([^)]+)\s*\)/gi, (_, a) => renderInlineLatex(`\\sqrt{${a}}`));
   t = t.replace(/\blog\s*\(?\s*([a-zA-Z0-9]+)\s*\)?/gi, (_, a) => renderInlineLatex(`\\log ${a}`));
   t = t.replace(/\b([a-zA-Z])\^(\d+)\b/g, (_, v, p) => renderInlineLatex(`${v}^{${p}}`));
   t = t.replace(/\(\s*([a-zA-Z0-9]+)\s*\/\s*([a-zA-Z0-9]+)\s*\)/g, (_, a, b) => renderInlineLatex(`\\frac{${a}}{${b}}`));
-
   return t;
 }
-
-// Une bloques \\[ ... \\] o $$ ... $$ que vienen partidos por líneas
 function mergeMathBlocks(lines) {
   const out = [];
-  let buf = null;
-  let mode = null; // "\\[" o "$$"
-
-  const isOpen = (l) => /^\s*(\\\[|\$\$)\s*$/.test(l);
-  const isClose = (l) =>
-    (mode === "\\[" && /^\s*\\\]\s*$/.test(l)) ||
-    (mode === "$$"  && /^\s*\$\$\s*$/.test(l));
-
-  for (const raw of lines) {
-    const l = raw.trim();
+  let buf = null, mode = null;
+  const isOpen  = (l) => /^\s*(\\\[|\$\$)\s*$/.test(l);
+  const isClose = (l) => (mode==="\\[" && /^\s*\\\]\s*$/.test(l)) || (mode==="$$" && /^\s*\$\$\s*$/.test(l));
+  for (const raw of (lines||[])) {
+    const l = String(raw || "").trim();
     if (buf) {
-      if (isClose(l)) {          // cerró el bloque
-        out.push(buf.trim());
-        buf = null; mode = null;
-      } else {
-        buf += "\n" + l;         // acumula dentro del bloque
-      }
+      if (isClose(l)) { out.push(buf.trim()); buf=null; mode=null; }
+      else { buf += "\n" + l; }
       continue;
     }
-    if (isOpen(l)) {             // abrió un bloque
-      buf = "";
-      mode = l.includes("$$") ? "$$" : "\\[";
-      continue;
-    }
+    if (isOpen(l)) { buf=""; mode = l.includes("$$") ? "$$" : "\\["; continue; }
     out.push(l);
   }
-  if (buf) out.push(buf.trim()); // por si faltó cierre
+  if (buf) out.push(buf.trim());
   return out;
 }
-
-// renderizador “consciente” de matemáticas (bloques + inline + heurísticos)
 function renderMathAware(text) {
   let s = tidyMarkdown(text);
   s = unescapeLatexDelimiters(s);
-
-  // Bloques $$...$$
   s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, body) => `<div class="math-block">${renderInlineLatex(body)}</div>`);
-  // Bloques \[...\] (multilínea)
   s = s.replace(/\\\[((?:.|\n)+?)\\\]/g, (_, body) => `<div class="math-block">${renderInlineLatex(body)}</div>`);
-  // Inline \(...\)
-  s = s.replace(/\\\((.+?)\\\)/g, (_, body) => renderInlineLatex(body));
-  // Inline $...$ (sin confundir con $$...$$)
+  s = s.replace(/\\\((.+?)\\\)/g,        (_, body) => renderInlineLatex(body));
   s = s.replace(/(?<!\$)\$([^\$]+?)\$(?!\$)/g, (_, body) => renderInlineLatex(body));
-
-  // Heurísticos
   s = toHeuristicLatex(s);
-
   return s;
 }
-
-// Si la línea trae comandos LaTeX “desnudos” y no se generó KaTeX aún, intenta renderizar toda la línea
 function renderStepHtml(s) {
   let html = renderMathAware(s);
   const hasKatex = /class="katex|class="math-block/.test(html);
-  if (!hasKatex && /\\[a-zA-Z]+/.test(s)) {
-    html = renderInlineLatex(s); // fuerza render inline de toda la línea como LaTeX
+  if (!hasKatex && /\\[a-zA-Z]+/.test(s || "")) {
+    html = renderInlineLatex(s); // fuerza LaTeX inline
   }
   return html;
 }
 
-// =============== Chat render básico (usuario) ===============
+/* =============== Chat (usuario) ================== */
 function addUserLine(text) {
+  if (!msgsEl) return;
   const div = document.createElement("div");
   div.className = "msg user";
   div.textContent = text;
@@ -226,26 +223,23 @@ function addUserLine(text) {
   msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 
-// ================= Pasos dinámicos ==================
+/* =============== Pasos dinámicos (asistente) ====== */
 function renderAssistantSteps(text) {
   const wrapper = document.createElement("div");
   wrapper.className = "assistant-steps";
 
-  // 1) Normaliza, divide y une bloques matemáticos partidos
-  let rawLines = text.split(/\n+/).map(tidyMarkdown).filter(Boolean);
+  let rawLines = String(text || "").split(/\n+/).map(tidyMarkdown).filter(Boolean);
   rawLines = mergeMathBlocks(rawLines);
 
-  // 2) Extrae pasos limpios
   const steps = [];
   for (let l of rawLines) {
-    l = l.replace(/^Paso\s+\d+:\s*/i, ""); // quita "Paso 4:" del contenido
+    l = l.replace(/^Paso\s+\d+:\s*/i, "");
     const m = l.match(/^\d+\.\s*(.*)$/);
     if (m) steps.push(m[1]);
     else if (l.startsWith("###")) steps.push(l.replace(/^#+\s*/, ""));
     else steps.push(l);
   }
 
-  // 3) Estado de navegación
   let current = 0;
   let showingAll = false;
 
@@ -258,12 +252,13 @@ function renderAssistantSteps(text) {
   controls.innerHTML = `
     <button class="btn-prev" title="Anterior">← Anterior</button>
     <button class="btn-next" title="Siguiente">Siguiente →</button>
-    <button class="btn-all" title="Mostrar todo">Mostrar todo</button>
+    <button class="btn-all"  title="Mostrar todo">Mostrar todo</button>
   `;
   wrapper.appendChild(controls);
 
   function render() {
     stepsContainer.innerHTML = "";
+    if (!steps.length) return;
     if (showingAll) {
       steps.forEach((s, i) => {
         const card = document.createElement("div");
@@ -280,134 +275,236 @@ function renderAssistantSteps(text) {
     }
   }
 
-  controls.querySelector(".btn-prev").onclick = () => {
-    if (current > 0) { current--; render(); }
-  };
-  controls.querySelector(".btn-next").onclick = () => {
-    if (current < steps.length - 1) { current++; render(); }
-  };
-  controls.querySelector(".btn-all").onclick = () => {
-    showingAll = !showingAll;
-    controls.querySelector(".btn-all").textContent = showingAll ? "Ver paso a paso" : "Mostrar todo";
-    render();
-  };
+  const prev = controls.querySelector(".btn-prev");
+  const next = controls.querySelector(".btn-next");
+  const all  = controls.querySelector(".btn-all");
+
+  if (prev) prev.onclick = () => { if (current > 0) { current--; render(); } };
+  if (next) next.onclick = () => { if (current < steps.length - 1) { current++; render(); } };
+  if (all)  all.onclick  = () => { showingAll = !showingAll; all.textContent = showingAll ? "Ver paso a paso" : "Mostrar todo"; render(); };
 
   render();
   return wrapper;
 }
-
-// añade un bloque opcional de "resultado final" al final de los pasos
 function maybeAppendResult(container, resultText) {
   if (!resultText) return;
   const box = document.createElement("div");
   box.className = "step-card result";
-  box.innerHTML = `<div class="step-title">Resultado</div><div class="step-body">${renderStepHtml(resultText)}</div>`;
+  box.innerHTML  = `<div class="step-title">Resultado</div><div class="step-body">${renderStepHtml(resultText)}</div>`;
   container.appendChild(box);
 }
-
-// =============== Chat render (asistente) ===============
 function addAssistantSteps(stepsArray, resultText) {
-  const div = document.createElement("div");
+  if (!msgsEl) return;
+  const div  = document.createElement("div");
   div.className = "msg";
-  const flow = renderAssistantSteps(stepsArray.join("\n"));
+  const flow    = renderAssistantSteps((stepsArray || []).join("\n"));
   div.appendChild(flow);
   maybeAppendResult(flow, resultText);
   msgsEl.appendChild(div);
   msgsEl.scrollTop = msgsEl.scrollHeight;
 }
-
 function addAssistantLine(text) {
-  // fallback a párrafos con fórmulas si no recibimos array de pasos
+  if (!msgsEl) return;
   const div = document.createElement("div");
   div.className = "msg";
   katexReady(() => {
-    const html = renderMathAware(text);
-    const parts = html.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    const html  = renderMathAware(text);
+    const parts = String(html || "").split(/\n+/).map(s => s.trim()).filter(Boolean);
     div.innerHTML = parts.map(p => p.startsWith('<div class="math-block">') ? p : `<p>${p}</p>`).join("");
     msgsEl.appendChild(div);
     msgsEl.scrollTop = msgsEl.scrollHeight;
   });
 }
 
-// ================== Send message ====================
+/* ================== Send message =================== */
 async function sendMessage() {
-  const q = inputEl.value.trim();
-  if (!q) return;
-  addUserLine(q);
-  inputEl.value = "";
-
   try {
+    if (!inputEl) return;
+    const q = inputEl.value.trim();
+    if (!q) return;
+    addUserLine(q);
+    inputEl.value = "";
+
     const res = await fetch(`${API_BASE}/edu/solve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        problem: q,
-        subject: SUBJECT_TO_BACKEND[subject] || "matemáticas"
-      })
+      body: JSON.stringify({ problem: q, subject: SUBJECT_TO_BACKEND[subject] || "matemáticas" }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!data.success) throw new Error(data.error || "respuesta no exitosa");
 
-    const steps = (data.solution?.steps || []).map(s => tidyMarkdown(String(s)));
+    const steps  = (data.solution?.steps || []).map((s) => tidyMarkdown(String(s)));
     const result = data.solution?.result || "";
-
     if (steps.length) addAssistantSteps(steps, result);
     else addAssistantLine(result || "No se recibieron pasos.");
   } catch (e) {
-    addAssistantLine("⚠️ Error al consultar al tutor:\n" + e.message);
+    console.error("sendMessage error:", e);
+    addAssistantLine("⚠️ Error al consultar al tutor:\n" + (e?.message || String(e)));
   }
 }
 
-// ================== Voice recognition ===============
+/* ================== Voice recognition ============== */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec = null;
-let listening = false;
+let rec = null, listening = false;
 
 function updateVoiceHint(msg, show = true) {
+  if (!voiceHint) return;
   voiceHint.textContent = msg;
   voiceHint.style.display = show ? "block" : "none";
 }
-
 function startVoice() {
   if (!SR) { updateVoiceHint("Tu navegador no soporta Web Speech API. Usa Chrome."); return; }
   if (listening) return;
-  rec = new SR();
-  rec.lang = "es-ES";
-  rec.continuous = true;
-  rec.interimResults = true;
-
-  rec.onresult = (ev) => {
-    let interim = "", finalTxt = "";
-    for (let i = ev.resultIndex; i < ev.results.length; i++) {
-      const t = ev.results[i][0].transcript;
-      if (ev.results[i].isFinal) finalTxt += t; else interim += t;
-    }
-    inputEl.value = (inputEl.value + " " + (finalTxt || interim)).trim();
-  };
-  rec.onend = () => { listening = false; btnVoice.textContent = "🎤"; updateVoiceHint("Grabación detenida", true); };
-  rec.onerror = () => { listening = false; btnVoice.textContent = "🎤"; updateVoiceHint("Error de micrófono", true); };
-
-  rec.start();
-  listening = true;
-  btnVoice.textContent = "■";
-  updateVoiceHint("Escuchando… pulsa el botón para detener.", true);
+  try {
+    rec = new SR();
+    rec.lang = "es-ES";
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = (ev) => {
+      let interim = "", finalTxt = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) finalTxt += t; else interim += t;
+      }
+      if (inputEl) inputEl.value = (inputEl.value + " " + (finalTxt || interim)).trim();
+    };
+    rec.onend   = () => { listening = false; if (btnVoice) btnVoice.textContent = "🎤"; updateVoiceHint("Grabación detenida", true); };
+    rec.onerror = ()  => { listening = false; if (btnVoice) btnVoice.textContent = "🎤"; updateVoiceHint("Error de micrófono", true); };
+    rec.start();
+    listening = true;
+    if (btnVoice) btnVoice.textContent = "■";
+    updateVoiceHint("Escuchando… pulsa el botón para detener.", true);
+  } catch (e) {
+    console.error("startVoice error:", e);
+  }
 }
-
 function stopVoice() {
-  if (rec) rec.stop();
+  try { if (rec) rec.stop(); } catch {}
   listening = false;
-  btnVoice.textContent = "🎤";
+  if (btnVoice) btnVoice.textContent = "🎤";
   updateVoiceHint("Grabación detenida", true);
 }
 
-// ================== Wire up =========================
-btnSend.addEventListener("click", sendMessage);
-inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-btnVoice.addEventListener("click", () => listening ? stopVoice() : startVoice());
+/* ================== EMPAREJAR (MQTT) =============== */
+// DOM (si no existen, se ignora esta vista)
+const pairDeviceEl = $("pair-device-id");
+const pairSaveBtn  = $("pair-save");
+const brokerSel    = $("mqtt-broker");
+const mqttBtn      = $("mqtt-connect");
+const mqttStatus   = $("mqtt-status");
+const telList      = $("pair-telemetry");
+const logBox       = $("pair-log");
 
-// Inicial
+const btnPing  = $("cmd-ping");
+const btnLedOn = $("cmd-led-on");
+const btnLedOff= $("cmd-led-off");
+
+function pairSet(id){ try{ localStorage.setItem("aipl_device_id", id);}catch{} }
+function pairGet(){ try{ return localStorage.getItem("aipl_device_id") || ""; }catch{ return ""; } }
+
+function log(...args){
+  if (!logBox) return;
+  const txt = args.map(a => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
+  logBox.textContent = (txt + "\n" + logBox.textContent).slice(0, 10000);
+}
+function addTelemetry(prefix, payload){
+  if (!telList) return;
+  const li = document.createElement("li");
+  const text = (typeof payload === "string" ? payload : JSON.stringify(payload));
+  li.textContent = `[${prefix}] ${text}`;
+  telList.prepend(li);
+  while (telList.children.length > 120) telList.removeChild(telList.lastChild);
+}
+
+let mqttClient = null;
+function topicFor(id, kind){ return `aipl/${id}/${kind}`; } // status|telemetry|cmd|ack
+
+function connectMQTT(){
+  try {
+    const deviceId = (pairDeviceEl?.value?.trim() || pairGet());
+    if (!deviceId) { alert("Ingresa un Device ID."); return; }
+    pairSet(deviceId);
+
+    const url = brokerSel?.value || "wss://test.mosquitto.org:8081/mqtt";
+    const opts = {
+      clientId: "web_" + Math.random().toString(16).slice(2),
+      clean: true,
+      connectTimeout: 8000,
+      // username/password si usas broker privado
+    };
+
+    if (mqttClient) { try { mqttClient.end(true); } catch {} mqttClient = null; }
+    if (typeof mqtt === "undefined" || !mqtt.connect) {
+      log("⚠️ mqtt.js no está cargado. Revisa el <script defer src=\"https://unpkg.com/mqtt/dist/mqtt.min.js\">");
+      return;
+    }
+
+    mqttClient = mqtt.connect(url, opts);
+
+    mqttClient.on("connect", () => {
+      if (mqttStatus) mqttStatus.textContent = "conectado";
+      log("🟢 MQTT conectado", url);
+      ["status","telemetry","ack"].forEach((kind) => {
+        const t = topicFor(deviceId, kind);
+        mqttClient.subscribe(t, (err) => err ? log("❌ sub", t, err) : log("📡 sub", t));
+      });
+    });
+
+    mqttClient.on("message", (topic, payload) => {
+      const msg = payload.toString();
+      try {
+        const parsed = JSON.parse(msg);
+        addTelemetry(topic, parsed);
+      } catch {
+        addTelemetry(topic, msg);
+      }
+    });
+
+    mqttClient.on("error", (e) => { if (mqttStatus) mqttStatus.textContent = "error"; log("MQTT error", e?.message||e); });
+    mqttClient.on("close", () => { if (mqttStatus) mqttStatus.textContent = "desconectado"; log("MQTT cerrado"); });
+  } catch (e) {
+    console.error("connectMQTT error:", e);
+    log("connectMQTT error:", e?.message || e);
+  }
+}
+function sendCmd(cmd, data = {}) {
+  try {
+    const deviceId = (pairDeviceEl?.value?.trim() || pairGet());
+    if (!deviceId) return alert("Empareja primero un Device ID.");
+    if (!mqttClient || !mqttClient.connected) return alert("Conéctate a MQTT primero.");
+
+    const t = topicFor(deviceId, "cmd");
+    const payload = JSON.stringify({ cmd, data, ts: Date.now() });
+    mqttClient.publish(t, payload, { qos: 0 }, (err) => err ? log("❌ publish", err) : log("📤", t, payload));
+  } catch (e) {
+    console.error("sendCmd error:", e);
+    log("sendCmd error:", e?.message || e);
+  }
+}
+
+/* ================== Wire up ========================= */
+if (btnSend)  btnSend.addEventListener("click", sendMessage);
+if (inputEl)  inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+if (btnVoice) btnVoice.addEventListener("click", () => listening ? stopVoice() : startVoice());
+
+// Emparejar
+if (pairSaveBtn) pairSaveBtn.onclick = () => {
+  const id = pairDeviceEl?.value?.trim();
+  if (!id) return alert("Ingresa un Device ID.");
+  pairSet(id);
+  log("✅ Guardado Device ID:", id);
+};
+if (mqttBtn)   mqttBtn.onclick   = connectMQTT;
+if (btnPing)   btnPing.onclick   = () => sendCmd("ping");
+if (btnLedOn)  btnLedOn.onclick  = () => sendCmd("led:on");
+if (btnLedOff) btnLedOff.onclick = () => sendCmd("led:off");
+
+// Restaurar ID guardado si existe
+if (pairDeviceEl && !pairDeviceEl.value) pairDeviceEl.value = pairGet();
+
+/* ================== Inicial ========================= */
 renderSubjects();
 renderPersona();
 renderQuick();
-activeSubjectEl.textContent = (SUBJECTS.find(x => x.key === subject)?.label) || "";
+if (activeSubjectEl) activeSubjectEl.textContent = (SUBJECTS.find(x => x.key === subject)?.label) || "";
