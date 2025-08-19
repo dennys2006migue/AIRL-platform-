@@ -3,12 +3,12 @@ const API_BASE = "https://airl.onrender.com"; // Backend Flask (Render)
 
 /* ================== Subjects & Persona ============ */
 const SUBJECTS = [
-  { key: "calculo",         label: "Cálculo",           persona: "Eres experto en cálculo diferencial e integral. Explica con pasos y ejemplos." },
-  { key: "fisica",          label: "Física",            persona: "Eres físico docente. Usa el SI, leyes y ejemplos prácticos." },
-  { key: "algebra_lineal",  label: "Álgebra Lineal",    persona: "Eres experto en vectores, matrices y espacios vectoriales." },
-  { key: "superior",        label: "Matemática Superior", persona: "Eres matemático. Razonamiento riguroso y demostraciones claras." },
-  { key: "ingles",          label: "Inglés",            persona: "Eres profesor de inglés. Corrige gramática, vocabulario y da ejemplos." },
-  { key: "programacion",    label: "Programación",      persona: "Eres ingeniero de software. Código claro y buenas prácticas." },
+  { key: "calculo",        label: "Cálculo",            persona: "Eres experto en cálculo diferencial e integral. Explica con pasos y ejemplos." },
+  { key: "fisica",         label: "Física",             persona: "Eres físico docente. Usa el SI, leyes y ejemplos prácticos." },
+  { key: "algebra_lineal", label: "Álgebra Lineal",     persona: "Eres experto en vectores, matrices y espacios vectoriales." },
+  { key: "superior",       label: "Matemática Superior",persona: "Eres matemático. Razonamiento riguroso y demostraciones claras." },
+  { key: "ingles",         label: "Inglés",             persona: "Eres profesor de inglés. Corrige gramática, vocabulario y da ejemplos." },
+  { key: "programacion",   label: "Programación",       persona: "Eres ingeniero de software. Código claro y buenas prácticas." },
 ];
 
 const SUBJECT_TO_BACKEND = {
@@ -21,39 +21,48 @@ const SUBJECT_TO_BACKEND = {
 };
 
 /* ===================== DOM refs ==================== */
-const $           = (id) => document.getElementById(id);
-const subjectsEl  = $("subjects");
+const $ = (id) => document.getElementById(id);
+const subjectsEl      = $("subjects");
 const activeSubjectEl = $("active-subject");
-const personaEl   = $("persona");
-const quickEl     = $("quick");
-const msgsEl      = $("msgs");
-const inputEl     = $("input");
-const btnSend     = $("btn-send");
-const btnVoice    = $("btn-voice");
-const voiceHint   = $("voice-hint");
+const personaEl       = $("persona");
+const quickEl         = $("quick");
+const msgsEl          = $("msgs");
+const inputEl         = $("input");
+const btnSend         = $("btn-send");
+const btnVoice        = $("btn-voice");
+const voiceHint       = $("voice-hint");
 
-/* ====== Vistas ====== */
-const viewEdu  = $("view-edu")  || document.querySelector(".card"); // fallback si no hay id
-const viewPair = $("view-pair"); // debe existir para Emparejar
-
+/* ====== Vistas (EDU / EMPAREJAR / LAB) + Sidebar ====== */
 function setActiveView(key) {
   try {
-    if (!viewEdu || !viewPair) {
-      console.warn("setActiveView: faltan contenedores de vista (view-edu o view-pair).");
-      return;
-    }
+    const viewEdu  = document.getElementById("view-edu")  || document.querySelector(".card");
+    const viewPair = document.getElementById("view-pair");
+    const viewLab  = document.getElementById("view-lab");
+
     if (key === "emparejar") {
-      viewEdu.style.display  = "none";
-      viewPair.style.display = "block";
-    } else {
-      viewEdu.style.display  = "block";
-      viewPair.style.display = "none";
+      if (viewEdu)  viewEdu.style.display  = "none";
+      if (viewLab)  viewLab.style.display  = "none";
+      if (viewPair) viewPair.style.display = "block";
+    } else if (key === "lab") {
+      if (viewEdu)  viewEdu.style.display  = "none";
+      if (viewPair) viewPair.style.display = "none";
+      if (viewLab)  viewLab.style.display  = "block";
+    } else { // edu
+      if (viewPair) viewPair.style.display = "none";
+      if (viewLab)  viewLab.style.display  = "none";
+      if (viewEdu)  viewEdu.style.display  = "block";
     }
-  } catch (e) {
-    console.error("Error setActiveView:", e);
-  }
+
+    const navEdu  = document.getElementById("nav-edu");
+    const navPair = document.getElementById("nav-pair");
+    const navLab  = document.getElementById("nav-lab");
+    [navEdu, navPair, navLab].forEach(b => b && b.classList.remove("active"));
+    if (key === "emparejar" && navPair) navPair.classList.add("active");
+    else if (key === "lab" && navLab)   navLab.classList.add("active");
+    else if (navEdu)                    navEdu.classList.add("active");
+  } catch (e) { console.error("Error setActiveView:", e); }
 }
-window.setActiveView = setActiveView; // para llamar desde el sidebar
+window.setActiveView = setActiveView;
 setActiveView("edu");
 
 /* ================== State ========================== */
@@ -67,19 +76,15 @@ function renderSubjects() {
   SUBJECTS.forEach((s) => {
     const btn = document.createElement("button");
     btn.textContent = s.label;
-    btn.className = (s.key === subject ? "active" : "");
+    btn.className   = (s.key === subject ? "active" : "");
     btn.onclick = () => {
       try {
         subject = s.key;
         localStorage.setItem("aipl_subject", subject);
-        renderSubjects();
-        renderPersona();
-        renderQuick();
+        renderSubjects(); renderPersona(); renderQuick();
         clearChat(true);
         setActiveView("edu");
-      } catch (e) {
-        console.error("Error cambiando asignatura:", e);
-      }
+      } catch (e) { console.error("Error cambiando asignatura:", e); }
     };
     subjectsEl.appendChild(btn);
   });
@@ -107,7 +112,7 @@ function renderQuick() {
   (chipsBySubject[subject] || []).forEach((txt) => {
     const b = document.createElement("button");
     b.className = "subjects";
-    b.style = "border:1px solid #e5e5e5;border-radius:14px;padding:6px 10px;background:#fff";
+    b.style     = "border:1px solid #e5e5e5;border-radius:14px;padding:6px 10px;background:#fff";
     b.textContent = txt;
     b.onclick = () => {
       if (!inputEl) return;
@@ -125,49 +130,42 @@ function clearChat(showWelcome = true) {
     if (showWelcome) {
       const div = document.createElement("div");
       div.className = "muted";
-      div.innerHTML  = 'Hola, soy <b>Llama Roja</b>. Cuéntame qué necesitas.';
+      div.innerHTML = 'Hola, soy <b>Llama Roja</b>. Cuéntame qué necesitas.';
       msgsEl.appendChild(div);
     }
   }
   if (inputEl) inputEl.value = "";
 }
 
-/* ========== KaTeX, limpieza y helpers matemáticos ========= */
+/* ========== KaTeX + limpieza/heurísticas matemáticas ========= */
 function katexReady(cb) {
   if (window.katex) return cb();
-  const t = setInterval(() => {
-    if (window.katex) { clearInterval(t); cb(); }
-  }, 50);
+  const t = setInterval(() => { if (window.katex) { clearInterval(t); cb(); } }, 50);
 }
 function tidyMarkdown(s) {
   return (s || "")
-    .replace(/^#+\s*/gm, "")                         // ## Título -> Título
-    .replace(/\*\*(.*?)\*\*/g, "$1")                 // **negrita** -> negrita
-    .replace(/__([^_]+)__/g, "$1")                   // __negrita__ -> negrita
-    .replace(/^\s*(\d+)\.\s*(\d+)\.\s*/gm, "$2. ")   // arregla "1. 1."
-    .replace(/^\s*\d+\.\s*\\\[$/gm, "\\[")           // arregla bloques partidos
+    .replace(/^#+\s*/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/^\s*(\d+)\.\s*(\d+)\.\s*/gm, "$2. ")
+    .replace(/^\s*\d+\.\s*\\\[$/gm, "\\[")
     .replace(/^\s*\d+\.\s*\\\]$/gm, "\\]")
     .trim();
 }
 function unescapeLatexDelimiters(s) {
   return (s || "")
-    .replace(/\\\\\(/g, "\\(")
-    .replace(/\\\\\)/g, "\\)")
-    .replace(/\\\\\[/g, "\\[")
-    .replace(/\\\\\]/g, "\\]")
+    .replace(/\\\\\(/g, "\\(").replace(/\\\\\)/g, "\\)")
+    .replace(/\\\\\[/g, "\\[").replace(/\\\\\]/g, "\\]")
     .replace(/\\\\/g, "\\");
 }
 function renderInlineLatex(expr) {
-  try {
-    return katex.renderToString(expr, { throwOnError:false, output:"html", strict:"ignore" });
-  } catch { return expr; }
+  try { return katex.renderToString(expr, { throwOnError:false, output:"html", strict:"ignore" }); }
+  catch { return expr; }
 }
 function toHeuristicLatex(text) {
   let t = text || "";
   t = t.replace(/O\(\s*[^)]+\s*\)/g, (m) => {
-    let inner = m.slice(2, -1)
-      .replace(/\blog\b/gi, "\\log")
-      .replace(/([a-zA-Z])\^(\d+)/g, "$1^{\\$2}");
+    let inner = m.slice(2, -1).replace(/\blog\b/gi, "\\log").replace(/([a-zA-Z])\^(\d+)/g, "$1^{\\$2}");
     return renderInlineLatex(`O(${inner})`);
   });
   t = t.replace(/sqrt\s*\(\s*([^)]+)\s*\)/gi, (_, a) => renderInlineLatex(`\\sqrt{${a}}`));
@@ -177,8 +175,7 @@ function toHeuristicLatex(text) {
   return t;
 }
 function mergeMathBlocks(lines) {
-  const out = [];
-  let buf = null, mode = null;
+  const out = []; let buf = null, mode = null;
   const isOpen  = (l) => /^\s*(\\\[|\$\$)\s*$/.test(l);
   const isClose = (l) => (mode==="\\[" && /^\s*\\\]\s*$/.test(l)) || (mode==="$$" && /^\s*\$\$\s*$/.test(l));
   for (const raw of (lines||[])) {
@@ -207,9 +204,7 @@ function renderMathAware(text) {
 function renderStepHtml(s) {
   let html = renderMathAware(s);
   const hasKatex = /class="katex|class="math-block/.test(html);
-  if (!hasKatex && /\\[a-zA-Z]+/.test(s || "")) {
-    html = renderInlineLatex(s); // fuerza LaTeX inline
-  }
+  if (!hasKatex && /\\[a-zA-Z]+/.test(s || "")) html = renderInlineLatex(s); // LaTeX desnudo
   return html;
 }
 
@@ -240,8 +235,7 @@ function renderAssistantSteps(text) {
     else steps.push(l);
   }
 
-  let current = 0;
-  let showingAll = false;
+  let current = 0, showingAll = false;
 
   const stepsContainer = document.createElement("div");
   stepsContainer.className = "steps-container";
@@ -278,7 +272,6 @@ function renderAssistantSteps(text) {
   const prev = controls.querySelector(".btn-prev");
   const next = controls.querySelector(".btn-next");
   const all  = controls.querySelector(".btn-all");
-
   if (prev) prev.onclick = () => { if (current > 0) { current--; render(); } };
   if (next) next.onclick = () => { if (current < steps.length - 1) { current++; render(); } };
   if (all)  all.onclick  = () => { showingAll = !showingAll; all.textContent = showingAll ? "Ver paso a paso" : "Mostrar todo"; render(); };
@@ -375,9 +368,7 @@ function startVoice() {
     listening = true;
     if (btnVoice) btnVoice.textContent = "■";
     updateVoiceHint("Escuchando… pulsa el botón para detener.", true);
-  } catch (e) {
-    console.error("startVoice error:", e);
-  }
+  } catch (e) { console.error("startVoice error:", e); }
 }
 function stopVoice() {
   try { if (rec) rec.stop(); } catch {}
@@ -387,7 +378,7 @@ function stopVoice() {
 }
 
 /* ================== EMPAREJAR (MQTT) =============== */
-// DOM (si no existen, se ignora esta vista)
+// DOM
 const pairDeviceEl = $("pair-device-id");
 const pairSaveBtn  = $("pair-save");
 const brokerSel    = $("mqtt-broker");
@@ -451,49 +442,40 @@ function connectMQTT(){
       });
     });
 
-mqttClient.on("message", (topic, payload) => {
-  const msg = payload.toString();
-  let parsed = null;
-  try { parsed = JSON.parse(msg); } catch {}
-  addTelemetry(topic, parsed || msg);
-
-  // Ingesta en backend para registro
-  try {
-    const deviceId = (pairDeviceEl?.value?.trim() || pairGet());
-    const kind = topic.endsWith("/telemetry") ? "telemetry"
-               : topic.endsWith("/status")    ? "status"
-               : topic.endsWith("/ack")       ? "ack"
-               : "other";
-    fetch(`${API_BASE}/lab/ingest`, {
-      method: "POST", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        ts: Date.now(),
-        device_id: deviceId || "",
-        type: kind === "telemetry" ? "telemetry" : "event",
-        kind, data: parsed || msg
-      })
-    }).catch(()=>{});
-  } catch {}
-});
-
-
+    // ÚNICO handler de mensajes: muestra en UI e ingesta al backend
     mqttClient.on("message", (topic, payload) => {
       const msg = payload.toString();
+      let parsed = null;
+      try { parsed = JSON.parse(msg); } catch {}
+      addTelemetry(topic, parsed || msg);
+
       try {
-        const parsed = JSON.parse(msg);
-        addTelemetry(topic, parsed);
-      } catch {
-        addTelemetry(topic, msg);
-      }
+        const deviceId = (pairDeviceEl?.value?.trim() || pairGet());
+        const kind = topic.endsWith("/telemetry") ? "telemetry"
+                   : topic.endsWith("/status")    ? "status"
+                   : topic.endsWith("/ack")       ? "ack"
+                   : "other";
+        fetch(`${API_BASE}/lab/ingest`, {
+          method: "POST", headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            ts: Date.now(),
+            device_id: deviceId || "",
+            type: kind === "telemetry" ? "telemetry" : "event",
+            kind, data: parsed || msg
+          })
+        }).catch(()=>{});
+      } catch {}
     });
 
     mqttClient.on("error", (e) => { if (mqttStatus) mqttStatus.textContent = "error"; log("MQTT error", e?.message||e); });
     mqttClient.on("close", () => { if (mqttStatus) mqttStatus.textContent = "desconectado"; log("MQTT cerrado"); });
+
   } catch (e) {
     console.error("connectMQTT error:", e);
     log("connectMQTT error:", e?.message || e);
   }
 }
+
 function sendCmd(cmd, data = {}) {
   try {
     const deviceId = (pairDeviceEl?.value?.trim() || pairGet());
@@ -535,28 +517,24 @@ renderPersona();
 renderQuick();
 if (activeSubjectEl) activeSubjectEl.textContent = (SUBJECTS.find(x => x.key === subject)?.label) || "";
 
-// ====== LAB refs ======
-const labView         = document.getElementById("view-lab");
-const labScenarioSel  = document.getElementById("lab-scenario");
-const labParam1       = document.getElementById("lab-param-1");
-const labParam2       = document.getElementById("lab-param-2");
-const labStartBtn     = document.getElementById("lab-start");
-const labStopBtn      = document.getElementById("lab-stop");
-const labStateSpan    = document.getElementById("lab-session-state");
-const labCmdStart     = document.getElementById("lab-cmd-start");
-const labCmdStop      = document.getElementById("lab-cmd-stop");
-const labCmdCalib     = document.getElementById("lab-cmd-calibrate");
-const labCmdLed       = document.getElementById("lab-cmd-led");
-const labRefreshBtn   = document.getElementById("lab-refresh");
-const labExportA      = document.getElementById("lab-export");
-const labTableBody    = document.getElementById("lab-tbody");
-const labAskInput     = document.getElementById("lab-ask");
-const labAskSend      = document.getElementById("lab-ask-send");
+/* ================== LAB (vista y flujo) ============= */
+const labScenarioSel  = $("lab-scenario");
+const labParam1       = $("lab-param-1");
+const labParam2       = $("lab-param-2");
+const labStartBtn     = $("lab-start");
+const labStopBtn      = $("lab-stop");
+const labStateSpan    = $("lab-session-state");
+const labCmdStart     = $("lab-cmd-start");
+const labCmdStop      = $("lab-cmd-stop");
+const labCmdCalib     = $("lab-cmd-calibrate");
+const labCmdLed       = $("lab-cmd-led");
+const labRefreshBtn   = $("lab-refresh");
+const labExportA      = $("lab-export");
+const labTableBody    = $("lab-tbody");
+const labAskInput     = $("lab-ask");
+const labAskSend      = $("lab-ask-send");
 
-function setLabStateText(s) {
-  if (!labStateSpan) return;
-  labStateSpan.textContent = s;
-}
+function setLabStateText(s) { if (labStateSpan) labStateSpan.textContent = s; }
 function renderLabRows(items=[]) {
   if (!labTableBody) return;
   labTableBody.innerHTML = "";
@@ -582,7 +560,6 @@ if (labStartBtn) labStartBtn.onclick = async () => {
   const params = {};
   if (labParam1?.value) params["param1"] = labParam1.value;
   if (labParam2?.value) params["param2"] = labParam2.value;
-
   try {
     const r = await fetch(`${API_BASE}/lab/session/start`, {
       method:"POST", headers:{"Content-Type":"application/json"},
@@ -590,23 +567,17 @@ if (labStartBtn) labStartBtn.onclick = async () => {
     });
     const j = await r.json();
     setLabStateText(j.ok ? `Sesión activa (${j.state.session_id}) — ${j.state.scenario}` : "Error al iniciar sesión");
-    // Envía configuración al dispositivo (opcional)
-    sendCmd("lab:set", { scenario, params });
-  } catch (e) {
-    setLabStateText("Error al iniciar sesión");
-  }
+    sendCmd("lab:set", { scenario, params }); // aviso al dispositivo (opcional)
+  } catch { setLabStateText("Error al iniciar sesión"); }
 };
 
 if (labStopBtn) labStopBtn.onclick = async () => {
   try {
     const r = await fetch(`${API_BASE}/lab/session/stop`, { method:"POST" });
-    const j = await r.json();
+    await r.json();
     setLabStateText("Sesión detenida");
-    // Aviso al dispositivo
     sendCmd("lab:stop", {});
-  } catch (e) {
-    setLabStateText("Error al detener sesión");
-  }
+  } catch { setLabStateText("Error al detener sesión"); }
 };
 
 if (labRefreshBtn) labRefreshBtn.onclick = async () => {
@@ -617,22 +588,19 @@ if (labRefreshBtn) labRefreshBtn.onclick = async () => {
   } catch {}
 };
 
-if (labExportA) {
-  labExportA.href = `${API_BASE}/lab/export`; // descarga directa
-}
+if (labExportA) labExportA.href = `${API_BASE}/lab/export`;
 
-if (labCmdStart)    labCmdStart.onclick    = () => sendCmd("lab:start");
-if (labCmdStop)     labCmdStop.onclick     = () => sendCmd("lab:stop");
-if (labCmdCalib)    labCmdCalib.onclick    = () => sendCmd("lab:calibrate");
-if (labCmdLed)      labCmdLed.onclick      = () => sendCmd("led:toggle");
+if (labCmdStart)  labCmdStart.onclick  = () => sendCmd("lab:start");
+if (labCmdStop)   labCmdStop.onclick   = () => sendCmd("lab:stop");
+if (labCmdCalib)  labCmdCalib.onclick  = () => sendCmd("lab:calibrate");
+if (labCmdLed)    labCmdLed.onclick    = () => sendCmd("led:toggle");
 
 if (labAskSend) labAskSend.onclick = () => {
   const q = labAskInput?.value?.trim();
   if (!q) return;
-  // Envía la pregunta al mismo flujo de chat EDU
   if (inputEl) {
     inputEl.value = q;
-    setActiveView("edu");  // salta al chat
+    setActiveView("edu");
     setTimeout(() => { document.getElementById("btn-send")?.click(); }, 50);
   }
 };
