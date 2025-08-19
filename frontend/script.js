@@ -91,16 +91,17 @@ function clearChat(showWelcome = true) {
 }
 
 // --- Limpia marcas markdown básicas (##, **, etc.)
-function stripMarkdown(s) {
+function tidyMarkdown(s) {
   return s
-    .replace(/^#+\s*/gm, "")   // ## Titulo -> Titulo
-    .replace(/\*\*/g, "")      // **negrita** -> negrita
+    .replace(/^#+\s*/gm, "")         // ## Título -> Título
+    .replace(/\*\*(.*?)\*\*/g, "$1") // **negrita** -> negrita
+    .replace(/__([^_]+)__/g, "$1")   // __negrita__ -> negrita
+    .replace(/^\s*(\d+)\.\s*(\d+)\.\s*/gm, "$2. ") // arregla "1. 1." duplicado
+    .replace(/^\s*-\s*-\s*/gm, "- ") // arregla "-- texto"
     .trim();
 }
 
-
-// --- Renderiza una fórmula LaTeX a HTML (o devuelve el texto si falla)
-function renderInline(expr) {
+function renderInlineLatex(expr) {
   try {
     return katex.renderToString(expr, { throwOnError: false, output: "html", strict: "ignore" });
   } catch {
@@ -108,39 +109,47 @@ function renderInline(expr) {
   }
 }
 
-// --- Reemplaza en un texto expresiones comunes por su versión KaTeX
-function replaceInlineMath(text) {
-  let html = stripMarkdown(text);
-
-  // Big-O: O(n log n), O(n^2)...
-  html = html.replace(/O\(\s*[^)]+\s*\)/g, (m) => {
-    let inner = m.slice(2, -1)                        // contenido entre O( )
-      .replace(/\blog\b/gi, "\\log")                  // log -> \log
-      .replace(/([a-zA-Z])\^(\d+)/g, "$1^{\$2}");     // n^2 -> n^{2}
-    return renderInline(`O(${inner})`);
+function toHeuristicLatex(text) {
+  // Heurísticas suaves: Big-O, sqrt, log, exponentes simples, fracciones (a/b) entre paréntesis
+  let t = text;
+  t = t.replace(/O\(\s*[^)]+\s*\)/g, (m) => {
+    let inner = m.slice(2, -1)
+      .replace(/\blog\b/gi, "\\log")
+      .replace(/([a-zA-Z])\^(\d+)/g, "$1^{\$2}");
+    return renderInlineLatex(`O(${inner})`);
   });
-
-  // sqrt(x) -> \sqrt{x}
-  html = html.replace(/sqrt\s*\(\s*([^)]+)\s*\)/gi, (_, a) => renderInline(`\\sqrt{${a}}`));
-
-  // log n -> \log n
-  html = html.replace(/\blog\s*\(?\s*([a-zA-Z0-9]+)\s*\)?/gi, (_, a) => renderInline(`\\log ${a}`));
-
-  // exponentes simples: n^2 -> n^{2}
-  html = html.replace(/\b([a-zA-Z])\^(\d+)\b/g, (_, v, p) => renderInline(`${v}^{${p}}`));
-
-  // fracciones simples entre paréntesis: (a/b) -> \frac{a}{b}
-  html = html.replace(/\(\s*([a-zA-Z0-9]+)\s*\/\s*([a-zA-Z0-9]+)\s*\)/g, (_, a, b) => renderInline(`\\frac{${a}}{${b}}`));
-
-  return html;
+  t = t.replace(/sqrt\s*\(\s*([^)]+)\s*\)/gi, (_, a) => renderInlineLatex(`\\sqrt{${a}}`));
+  t = t.replace(/\blog\s*\(?\s*([a-zA-Z0-9]+)\s*\)?/gi, (_, a) => renderInlineLatex(`\\log ${a}`));
+  t = t.replace(/\b([a-zA-Z])\^(\d+)\b/g, (_, v, p) => renderInlineLatex(`${v}^{${p}}`));
+  t = t.replace(/\(\s*([a-zA-Z0-9]+)\s*\/\s*([a-zA-Z0-9]+)\s*\)/g, (_, a, b) => renderInlineLatex(`\\frac{${a}}{${b}}`));
+  return t;
 }
 
-// --- NUEVA versión: muestra mensaje del asistente como párrafos con matemáticas bonitas
+// Renderiza math en línea y por bloques si vienen con \(...\), \[...\] o $$...$$
+function renderMathAware(text) {
+  // 1) Limpia markdown ruidoso
+  let s = tidyMarkdown(text);
+
+  // 2) Bloques: $$...$$ y \[...\]
+  s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, body) => `<div class="math-block">${renderInlineLatex(body)}</div>`);
+  s = s.replace(/\\\[(.+?)\\\]/gs, (_, body) => `<div class="math-block">${renderInlineLatex(body)}</div>`);
+
+  // 3) Inline: \(...\)
+  s = s.replace(/\\\((.+?)\\\)/g, (_, body) => renderInlineLatex(body));
+
+  // 4) Heurísticas (Big‑O, sqrt, log, n^2, etc.)
+  s = toHeuristicLatex(s);
+
+  return s;
+}
+
+
 function addAssistantLine(text) {
   const div = document.createElement("div");
-  div.className = "msg"; // globo del asistente (NO .user)
+  div.className = "msg"; // globo del asistente
   const paragraphs = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
-  div.innerHTML = paragraphs.map(p => `<p>${replaceInlineMath(p)}</p>`).join("");
+
+  div.innerHTML = paragraphs.map(p => `<p>${renderMathAware(p)}</p>`).join("");
   msgsEl.appendChild(div);
   msgsEl.scrollTop = msgsEl.scrollHeight;
 }
