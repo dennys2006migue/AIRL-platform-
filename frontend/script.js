@@ -142,7 +142,7 @@ function toHeuristicLatex(text) {
   t = t.replace(/O\(\s*[^)]+\s*\)/g, (m) => {
     let inner = m.slice(2, -1)
       .replace(/\blog\b/gi, "\\log")
-      .replace(/([a-zA-Z])\^(\d+)/g, "$1^{\$2}");
+      .replace(/([a-zA-Z])\^(\d+)/g, "$1^{\\$2}");
     return renderInlineLatex(`O(${inner})`);
   });
 
@@ -174,36 +174,117 @@ function renderMathAware(text) {
   return s;
 }
 
-// ================== Chat UI helpers =================
-function addLine(role, text) {
+// =============== Chat render básico (usuario) ===============
+function addUserLine(text) {
   const div = document.createElement("div");
-  div.className = "msg " + (role === "user" ? "user" : "");
+  div.className = "msg user";
+  div.textContent = text;
+  msgsEl.appendChild(div);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
 
-  if (role === "assistant") {
-    // Esperar a que KaTeX esté listo
-    katexReady(() => {
-      const html = renderMathAware(text);
-      const paragraphs = html.split(/\n+/).map(s => s.trim()).filter(Boolean);
-      div.innerHTML = paragraphs
-        .map(p => p.startsWith('<div class="math-block">') ? p : `<p>${p}</p>`)
-        .join("");
-      msgsEl.appendChild(div);
-      msgsEl.scrollTop = msgsEl.scrollHeight;
-    });
-  } else {
-    // Mensaje del usuario: texto plano
-    div.textContent = text;
-    msgsEl.appendChild(div);
-    msgsEl.scrollTop = msgsEl.scrollHeight;
+// ================= Pasos dinámicos ==================
+function renderAssistantSteps(text) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "assistant-steps";
+
+  // 1) Normaliza y divide en líneas
+  let rawLines = text.split(/\n+/).map(tidyMarkdown).filter(Boolean);
+
+  // 2) Extrae pasos limpios
+  const steps = [];
+  for (let l of rawLines) {
+    // "12. texto" -> "texto"
+    const m = l.match(/^\d+\.\s*(.*)$/);
+    if (m) steps.push(m[1]);
+    else if (l.startsWith("###")) steps.push(l.replace(/^#+\s*/, ""));
+    else if (/^Paso\s+\d+/i.test(l)) steps.push(l);
+    else steps.push(l);
   }
+
+  // 3) Estado de navegación
+  let current = 0;
+  let showingAll = false;
+
+  const stepsContainer = document.createElement("div");
+  stepsContainer.className = "steps-container";
+  wrapper.appendChild(stepsContainer);
+
+  const controls = document.createElement("div");
+  controls.className = "steps-controls";
+  controls.innerHTML = `
+    <button class="btn-prev" title="Anterior">← Anterior</button>
+    <button class="btn-next" title="Siguiente">Siguiente →</button>
+    <button class="btn-all" title="Mostrar todo">Mostrar todo</button>
+  `;
+  wrapper.appendChild(controls);
+
+  function render() {
+    stepsContainer.innerHTML = "";
+    if (showingAll) {
+      steps.forEach((s, i) => {
+        const card = document.createElement("div");
+        card.className = "step-card";
+        card.innerHTML = `<div class="step-title">Paso ${i + 1}</div><div class="step-body">${renderMathAware(s)}</div>`;
+        stepsContainer.appendChild(card);
+      });
+    } else {
+      const s = steps[current];
+      const card = document.createElement("div");
+      card.className = "step-card";
+      card.innerHTML = `<div class="step-title">Paso ${current + 1}</div><div class="step-body">${renderMathAware(s)}</div>`;
+      stepsContainer.appendChild(card);
+    }
+  }
+
+  controls.querySelector(".btn-prev").onclick = () => {
+    if (current > 0) { current--; render(); }
+  };
+  controls.querySelector(".btn-next").onclick = () => {
+    if (current < steps.length - 1) { current++; render(); }
+  };
+  controls.querySelector(".btn-all").onclick = () => {
+    showingAll = !showingAll;
+    controls.querySelector(".btn-all").textContent = showingAll ? "Ver paso a paso" : "Mostrar todo";
+    render();
+  };
+
+  render();
+  return wrapper;
+}
+
+// añade un bloque opcional de "resultado final" al final de los pasos
+function maybeAppendResult(container, resultText) {
+  if (!resultText) return;
+  const box = document.createElement("div");
+  box.className = "step-card result";
+  box.innerHTML = `<div class="step-title">Resultado</div><div class="step-body">${renderMathAware(resultText)}</div>`;
+  container.appendChild(box);
+}
+
+// =============== Chat render (asistente) ===============
+function addAssistantSteps(stepsArray, resultText) {
+  const div = document.createElement("div");
+  div.className = "msg";
+  const flow = renderAssistantSteps(stepsArray.join("\n"));
+  div.appendChild(flow);
+  // resultado (si existe)
+  maybeAppendResult(flow, resultText);
+  msgsEl.appendChild(div);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 
 function addAssistantLine(text) {
-  addLine("assistant", text);
-}
-
-function addUserLine(text) {
-  addLine("user", text);
+  // fallback a párrafos con fórmulas si no recibimos array de pasos
+  const div = document.createElement("div");
+  div.className = "msg";
+  katexReady(() => {
+    const html = renderMathAware(text);
+    const parts = html.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    div.innerHTML = parts.map(p => p.startsWith('<div class="math-block">') ? p : `<p>${p}</p>`).join("");
+    msgsEl.appendChild(div);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  });
 }
 
 // ================== Send message ====================
@@ -226,9 +307,11 @@ async function sendMessage() {
     const data = await res.json();
     if (!data.success) throw new Error(data.error || "respuesta no exitosa");
 
-    const steps = (data.solution?.steps || []).map((s, i) => `${i + 1}. ${s}`).join("\n");
-    const result = data.solution?.result ? `\n\n${data.solution.result}` : "";
-    addAssistantLine(steps + result || "No se recibieron pasos.");
+    const steps = (data.solution?.steps || []).map(s => tidyMarkdown(String(s)));
+    const result = data.solution?.result || "";
+
+    if (steps.length) addAssistantSteps(steps, result);
+    else addAssistantLine(result || "No se recibieron pasos.");
   } catch (e) {
     addAssistantLine("⚠️ Error al consultar al tutor:\n" + e.message);
   }
@@ -256,8 +339,7 @@ function startVoice() {
     let interim = "", finalTxt = "";
     for (let i = ev.resultIndex; i < ev.results.length; i++) {
       const t = ev.results[i][0].transcript;
-      if (ev.results[i].isFinal) finalTxt += t;
-      else interim += t;
+      if (ev.results[i].isFinal) finalTxt += t; else interim += t;
     }
     inputEl.value = (inputEl.value + " " + (finalTxt || interim)).trim();
   };

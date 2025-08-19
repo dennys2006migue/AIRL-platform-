@@ -8,6 +8,15 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
   <style>
+    /* Tarjetas de pasos */
+.assistant-steps { display:flex; flex-direction:column; gap:12px; }
+.steps-container { display:flex; flex-direction:column; gap:10px; }
+.step-card { background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:12px; }
+.step-card.result { border-color:#c9e8cd; background:#f3fbf4; }
+.step-title { font-weight:600; margin-bottom:6px; }
+.steps-controls { display:flex; gap:8px; margin-top:4px; }
+.steps-controls button { padding:6px 12px; border:1px solid #ddd; border-radius:8px; background:#fff; cursor:pointer; }
+.steps-controls button:hover { background:#f3f3f3; }
     .msg p { margin: 6px 0; line-height: 1.45; }
     .msg .katex { font-size: 14px; }
     .math-block { margin: 6px 0; } 
