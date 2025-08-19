@@ -103,10 +103,10 @@ function katexReady(cb) {
 // --- limpia markdown y numeraciones ruidosas
 function tidyMarkdown(s) {
   return s
-    .replace(/^#+\s*/gm, "")            // ## Título -> Título
-    .replace(/\*\*(.*?)\*\*/g, "$1")    // **negrita** -> negrita
-    .replace(/__([^_]+)__/g, "$1")      // __negrita__ -> negrita
-    .replace(/^\s*(\d+)\.\s*(\d+)\.\s*/gm, "$2. ") // arregla "1. 1."
+    .replace(/^#+\s*/gm, "")                         // ## Título -> Título
+    .replace(/\*\*(.*?)\*\*/g, "$1")                 // **negrita** -> negrita
+    .replace(/__([^_]+)__/g, "$1")                   // __negrita__ -> negrita
+    .replace(/^\s*(\d+)\.\s*(\d+)\.\s*/gm, "$2. ")   // arregla "1. 1."
     // arregla bloques LaTeX partidos por líneas numeradas:
     .replace(/^\s*\d+\.\s*\\\[$/gm, "\\[")
     .replace(/^\s*\d+\.\s*\\\]$/gm, "\\]")
@@ -154,6 +154,39 @@ function toHeuristicLatex(text) {
   return t;
 }
 
+// Une bloques \\[ ... \\] o $$ ... $$ que vienen partidos por líneas
+function mergeMathBlocks(lines) {
+  const out = [];
+  let buf = null;
+  let mode = null; // "\\[" o "$$"
+
+  const isOpen = (l) => /^\s*(\\\[|\$\$)\s*$/.test(l);
+  const isClose = (l) =>
+    (mode === "\\[" && /^\s*\\\]\s*$/.test(l)) ||
+    (mode === "$$"  && /^\s*\$\$\s*$/.test(l));
+
+  for (const raw of lines) {
+    const l = raw.trim();
+    if (buf) {
+      if (isClose(l)) {          // cerró el bloque
+        out.push(buf.trim());
+        buf = null; mode = null;
+      } else {
+        buf += "\n" + l;         // acumula dentro del bloque
+      }
+      continue;
+    }
+    if (isOpen(l)) {             // abrió un bloque
+      buf = "";
+      mode = l.includes("$$") ? "$$" : "\\[";
+      continue;
+    }
+    out.push(l);
+  }
+  if (buf) out.push(buf.trim()); // por si faltó cierre
+  return out;
+}
+
 // renderizador “consciente” de matemáticas (bloques + inline + heurísticos)
 function renderMathAware(text) {
   let s = tidyMarkdown(text);
@@ -174,6 +207,16 @@ function renderMathAware(text) {
   return s;
 }
 
+// Si la línea trae comandos LaTeX “desnudos” y no se generó KaTeX aún, intenta renderizar toda la línea
+function renderStepHtml(s) {
+  let html = renderMathAware(s);
+  const hasKatex = /class="katex|class="math-block/.test(html);
+  if (!hasKatex && /\\[a-zA-Z]+/.test(s)) {
+    html = renderInlineLatex(s); // fuerza render inline de toda la línea como LaTeX
+  }
+  return html;
+}
+
 // =============== Chat render básico (usuario) ===============
 function addUserLine(text) {
   const div = document.createElement("div");
@@ -188,17 +231,17 @@ function renderAssistantSteps(text) {
   const wrapper = document.createElement("div");
   wrapper.className = "assistant-steps";
 
-  // 1) Normaliza y divide en líneas
+  // 1) Normaliza, divide y une bloques matemáticos partidos
   let rawLines = text.split(/\n+/).map(tidyMarkdown).filter(Boolean);
+  rawLines = mergeMathBlocks(rawLines);
 
   // 2) Extrae pasos limpios
   const steps = [];
   for (let l of rawLines) {
-    // "12. texto" -> "texto"
+    l = l.replace(/^Paso\s+\d+:\s*/i, ""); // quita "Paso 4:" del contenido
     const m = l.match(/^\d+\.\s*(.*)$/);
     if (m) steps.push(m[1]);
     else if (l.startsWith("###")) steps.push(l.replace(/^#+\s*/, ""));
-    else if (/^Paso\s+\d+/i.test(l)) steps.push(l);
     else steps.push(l);
   }
 
@@ -225,14 +268,14 @@ function renderAssistantSteps(text) {
       steps.forEach((s, i) => {
         const card = document.createElement("div");
         card.className = "step-card";
-        card.innerHTML = `<div class="step-title">Paso ${i + 1}</div><div class="step-body">${renderMathAware(s)}</div>`;
+        card.innerHTML = `<div class="step-title">Paso ${i + 1}</div><div class="step-body">${renderStepHtml(s)}</div>`;
         stepsContainer.appendChild(card);
       });
     } else {
       const s = steps[current];
       const card = document.createElement("div");
       card.className = "step-card";
-      card.innerHTML = `<div class="step-title">Paso ${current + 1}</div><div class="step-body">${renderMathAware(s)}</div>`;
+      card.innerHTML = `<div class="step-title">Paso ${current + 1}</div><div class="step-body">${renderStepHtml(s)}</div>`;
       stepsContainer.appendChild(card);
     }
   }
@@ -258,7 +301,7 @@ function maybeAppendResult(container, resultText) {
   if (!resultText) return;
   const box = document.createElement("div");
   box.className = "step-card result";
-  box.innerHTML = `<div class="step-title">Resultado</div><div class="step-body">${renderMathAware(resultText)}</div>`;
+  box.innerHTML = `<div class="step-title">Resultado</div><div class="step-body">${renderStepHtml(resultText)}</div>`;
   container.appendChild(box);
 }
 
@@ -268,7 +311,6 @@ function addAssistantSteps(stepsArray, resultText) {
   div.className = "msg";
   const flow = renderAssistantSteps(stepsArray.join("\n"));
   div.appendChild(flow);
-  // resultado (si existe)
   maybeAppendResult(flow, resultText);
   msgsEl.appendChild(div);
   msgsEl.scrollTop = msgsEl.scrollHeight;
