@@ -90,24 +90,35 @@ function clearChat(showWelcome = true) {
   inputEl.value = "";
 }
 
+// --- util: espera a que KaTeX esté disponible
+function katexReady(cb) {
+  if (window.katex) return cb();
+  const t = setInterval(() => {
+    if (window.katex) { clearInterval(t); cb(); }
+  }, 50);
+}
+
+// --- limpia markdown y numeraciones ruidosas
 function tidyMarkdown(s) {
   return s
-    .replace(/^#+\s*/gm, "")          // ## Título -> Título
-    .replace(/\*\*(.*?)\*\*/g, "$1")  // **negrita** -> negrita
-    .replace(/__([^_]+)__/g, "$1")    // __negrita__ -> negrita
+    .replace(/^#+\s*/gm, "")            // ## Título -> Título
+    .replace(/\*\*(.*?)\*\*/g, "$1")    // **negrita** -> negrita
+    .replace(/__([^_]+)__/g, "$1")      // __negrita__ -> negrita
     .replace(/^\s*(\d+)\.\s*(\d+)\.\s*/gm, "$2. ") // arregla "1. 1."
-    .replace(/^\s*-\s*-\s*/gm, "- ")
+    // arregla bloques LaTeX partidos por líneas numeradas:
+    .replace(/^\s*\d+\.\s*\\\[$/gm, "\\[")
+    .replace(/^\s*\d+\.\s*\\\]$/gm, "\\]")
     .trim();
 }
 
-// Des-escapa \\( -> \(, \\[ -> \[, etc. (cuando el backend/JSON deja doble \)
+// --- des-escapa delimitadores cuando llegan doble-escapados
 function unescapeLatexDelimiters(s) {
   return s
     .replace(/\\\\\(/g, "\\(")
     .replace(/\\\\\)/g, "\\)")
     .replace(/\\\\\[/g, "\\[")
     .replace(/\\\\\]/g, "\\]")
-    .replace(/\\\\/g, "\\"); // último recurso: reducir dobles a simples
+    .replace(/\\\\/g, "\\");
 }
 
 function renderInlineLatex(expr) {
@@ -118,49 +129,41 @@ function renderInlineLatex(expr) {
       strict: "ignore"
     });
   } catch {
-    return expr;
+    return expr; // fallback
   }
 }
 
+// heurísticos: Big-O, sqrt, log, n^2, (a/b)
 function toHeuristicLatex(text) {
   let t = text;
 
-  // Big-O: O(n log n), O(n^2)...
   t = t.replace(/O\(\s*[^)]+\s*\)/g, (m) => {
     let inner = m.slice(2, -1)
       .replace(/\blog\b/gi, "\\log")
-      .replace(/([a-zA-Z])\s+\\log\s+([a-zA-Z0-9])/g, "$1 \\\\log $2")
       .replace(/([a-zA-Z])\^(\d+)/g, "$1^{\$2}");
     return renderInlineLatex(`O(${inner})`);
   });
 
-  // sqrt(x)
   t = t.replace(/sqrt\s*\(\s*([^)]+)\s*\)/gi, (_, a) => renderInlineLatex(`\\sqrt{${a}}`));
-
-  // log n
   t = t.replace(/\blog\s*\(?\s*([a-zA-Z0-9]+)\s*\)?/gi, (_, a) => renderInlineLatex(`\\log ${a}`));
-
-  // exponentes simples: n^2
   t = t.replace(/\b([a-zA-Z])\^(\d+)\b/g, (_, v, p) => renderInlineLatex(`${v}^{${p}}`));
-
-  // fracciones simples: (a/b)
   t = t.replace(/\(\s*([a-zA-Z0-9]+)\s*\/\s*([a-zA-Z0-9]+)\s*\)/g, (_, a, b) => renderInlineLatex(`\\frac{${a}}{${b}}`));
 
   return t;
 }
 
-// Renderiza matemáticas: $$...$$, \[...\], \(...\), $...$ + heurísticos
+// renderizador “consciente” de matemáticas (bloques + inline + heurísticos)
 function renderMathAware(text) {
   let s = tidyMarkdown(text);
   s = unescapeLatexDelimiters(s);
 
   // Bloques $$...$$
   s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, body) => `<div class="math-block">${renderInlineLatex(body)}</div>`);
-  // Bloques \[...\]
-  s = s.replace(/\\\[(.+?)\\\]/gs, (_, body) => `<div class="math-block">${renderInlineLatex(body)}</div>`);
+  // Bloques \[...\] (multilínea)
+  s = s.replace(/\\\[((?:.|\n)+?)\\\]/g, (_, body) => `<div class="math-block">${renderInlineLatex(body)}</div>`);
   // Inline \(...\)
   s = s.replace(/\\\((.+?)\\\)/g, (_, body) => renderInlineLatex(body));
-  // Inline $...$ (simple; evita capturar $$...$$ que ya tratamos)
+  // Inline $...$ (sin confundir con $$...$$)
   s = s.replace(/(?<!\$)\$([^\$]+?)\$(?!\$)/g, (_, body) => renderInlineLatex(body));
 
   // Heurísticos
@@ -168,6 +171,22 @@ function renderMathAware(text) {
 
   return s;
 }
+
+// --- reemplaza SOLO esta función en tu chat:
+function addAssistantLine(text) {
+  const div = document.createElement("div");
+  div.className = "msg";
+
+  katexReady(() => {
+    const html = renderMathAware(text);  // procesa TODO el texto primero
+    const parts = html.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    // No envolvemos bloques .math-block en <p>
+    div.innerHTML = parts.map(p => p.startsWith('<div class="math-block">') ? p : `<p>${p}</p>`).join("");
+    msgsEl.appendChild(div);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  });
+}
+
 
 function addAssistantLine(text) {
   const div = document.createElement("div");
