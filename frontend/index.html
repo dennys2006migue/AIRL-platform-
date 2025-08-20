@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>AIPL — EDU Dashboard</title>
+  <title>AIRL — Platform</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- KaTeX CSS + JS -->
@@ -69,31 +69,30 @@
 </head>
 <body>
   <header>
-    <!-- Mascota (Llama Roja / Alpaca) -->
-    <div style="width:40px;height:40px;border-radius:999px;overflow:hidden">
-      <svg viewBox="0 0 200 200" width="40" height="40" aria-hidden="true">
-        <defs>
-          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff4d4d"/><stop offset="100%" stop-color="#b30000"/>
-          </linearGradient>
-        </defs>
-        <circle cx="100" cy="100" r="100" fill="url(#grad)"/>
-        <ellipse cx="100" cy="110" rx="55" ry="42" fill="#fff7f0"/>
-        <circle cx="85" cy="105" r="6" fill="#333"/><circle cx="115" cy="105" r="6" fill="#333"/>
-        <path d="M85 125 Q100 135 115 125" stroke="#333" stroke-width="4" fill="none"/>
-        <path d="M70 70 Q80 30 95 55" fill="#fff7f0"/><path d="M130 70 Q120 30 105 55" fill="#fff7f0"/>
-      </svg>
-    </div>
-    <div>
-      <div style="font-weight:700">AIPL — EDU Dashboard</div>
-      <div class="muted">IoT + IA + STEAM • Research Prototype</div>
-    </div>
-  </header>
+    <header>
+      
+  <!-- Logo (SVG minimal “Paquita” con libro + foco estilizado) -->
+  <div style="width:40px;height:40px;border-radius:999px;overflow:hidden;background:#c4161c;display:flex;align-items:center;justify-content:center">
+    <svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true">
+      <!-- libro -->
+      <path d="M8 47c9-4 17-4 24 0c7-4 15-4 24 0v7c-9-4-17-4-24 0c-7-4-15-4-24 0z" fill="#fff"/>
+      <!-- alpaca simplificada -->
+      <path d="M32 20c2-3 7-2 8 1l2 5c1 3 0 6-1 9l-3 6c-1 2-1 5-2 8h-3v-7c-2-2-3-5-4-8-2 3-4 6-7 8l-2 7h-3l1-9c0-2 1-3 2-4-3-1-5-3-5-6 0-3 2-5 4-6h2c7-6 14-9 23-9z" fill="#fff"/>
+      <!-- foco/idea -->
+      <circle cx="45" cy="15" r="6" fill="none" stroke="#fff" stroke-width="2"/>
+      <path d="M45 22v2m-5-3l-2 2m12-2l2 2m-14-7h-3m20 0h3m-11-5v-3" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div>
+    <div style="font-weight:700">AIRL‑Platform</div>
+    <div class="muted">Intelligent Robotics for Education</div>
+  </div>
+</header>
 
   <div class="wrap">
     <aside>
       <div class="brand">
-        <div style="font-weight:700">Llama Roja</div>
+        <div style="font-weight:700">ESPOCH-TELEMATICS</div>
       </div>
       <div class="nav" id="sidebar">
         <button id="nav-edu" class="active" onclick="setActiveView('edu')">🎓 Módulo EDU</button>
@@ -119,7 +118,7 @@
             <h3 style="margin:0 0 8px 0">Asistente especialista</h3>
             <div class="chat">
               <div class="msgs" id="msgs">
-                <div class="muted">Hola, soy <b>Llama Roja</b>. Cuéntame qué necesitas.</div>
+                <div class="muted">Hi, I'm<b>Al-paquita 🦙</b>.How can I assist you today?.</div>
               </div>
               <div class="composer">
                 <input id="input" placeholder="Escribe tu ejercicio o pregunta…" />
@@ -145,7 +144,7 @@
 
       <!-- ====== Vista EMPAREJAR ====== -->
       <section id="view-pair" class="card" style="display:none">
-        <h2>Emparejar dispositivo (ESP32)</h2>
+        <h2>Power On & Connect Robot (ESP32)</h2>
 
         <div class="row" style="flex-wrap:wrap">
           <input id="pair-device-id" placeholder="Device ID (ej. robot-001)" style="max-width:240px" />
