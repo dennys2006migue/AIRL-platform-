@@ -79,15 +79,30 @@
   <div class="logo">
     <!-- LOGO: círculo rojo + alpaca sobre libro + foco (versión limpia) -->
     <svg viewBox="0 0 200 200" width="40" height="40" aria-hidden="true">
-      <circle cx="100" cy="100" r="100" fill="#c4161c"/>
-      <!-- libro -->
-      <path d="M35 150c25-10 50-10 65 0c15-10 40-10 65 0v12c-25-10-50-10-65 0c-15-10-40-10-65 0z" fill="#fff"/>
-      <!-- alpaca simplificada -->
-      <path d="M92 74c3-7 14-6 16 1l4 10c2 6 1 12-1 18l-7 14c-2 5-2 11-4 18h-8v-15c-4-4-6-9-8-14-4 6-9 11-14 14l-4 15h-7l2-18c0-5 2-7 4-9-6-2-10-6-10-12 0-6 4-10 8-12h4c14-12 29-18 47-19z" fill="#fff"/>
-      <!-- foco -->
-      <circle cx="145" cy="55" r="16" fill="none" stroke="#fff" stroke-width="4"/>
-      <path d="M145 73v5m-12-6l-4 4m28-4l4 4m-35-17h-8m44 0h8m-21-12v-8" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
-    </svg>
+  <!-- círculo rojo de fondo -->
+  <circle cx="100" cy="100" r="100" fill="#c4161c"/>
+  
+  <!-- cara de alpaca -->
+  <ellipse cx="100" cy="120" rx="45" ry="35" fill="#fff"/>
+  <circle cx="75" cy="90" r="18" fill="#fff"/>
+  <circle cx="125" cy="90" r="18" fill="#fff"/>
+  
+  <!-- orejas -->
+  <path d="M62 70 Q65 45 80 60" fill="#fff"/>
+  <path d="M138 70 Q135 45 120 60" fill="#fff"/>
+  
+  <!-- lentes -->
+  <circle cx="82" cy="100" r="16" fill="none" stroke="#c4161c" stroke-width="4"/>
+  <circle cx="118" cy="100" r="16" fill="none" stroke="#c4161c" stroke-width="4"/>
+  <line x1="98" y1="100" x2="102" y2="100" stroke="#c4161c" stroke-width="4"/>
+  
+  <!-- ojos dentro de los lentes -->
+  <circle cx="82" cy="100" r="6" fill="#c4161c"/>
+  <circle cx="118" cy="100" r="6" fill="#c4161c"/>
+  
+  <!-- sonrisa -->
+  <path d="M80 125 Q100 140 120 125" stroke="#c4161c" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>
   </div>
 
   <div class="title-box">
