@@ -44,6 +44,11 @@
     .btn{padding:10px 14px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
     .btn.ghost{background:#fff;color:#111;border:1px solid var(--border)}
     .muted{color:var(--muted);font-size:12px}
+    .topbar{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--border);background:#fff}
+    .topbar .logo{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;overflow:hidden}
+    .topbar .title{font-weight:700}
+    .topbar .subtitle{color:var(--muted);font-size:12px}
+
 
     /* Tarjetas de pasos */
     .assistant-steps { display:flex; flex-direction:column; gap:12px; }
@@ -68,24 +73,26 @@
   </style>
 </head>
 <body>
-  <header>
-    <header>
-      
-  <!-- Logo (SVG minimal “Paquita” con libro + foco estilizado) -->
-  <div style="width:40px;height:40px;border-radius:999px;overflow:hidden;background:#c4161c;display:flex;align-items:center;justify-content:center">
-    <svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true">
+
+
+   <header class="topbar">
+  <div class="logo">
+    <!-- LOGO: círculo rojo + alpaca sobre libro + foco (versión limpia) -->
+    <svg viewBox="0 0 200 200" width="40" height="40" aria-hidden="true">
+      <circle cx="100" cy="100" r="100" fill="#c4161c"/>
       <!-- libro -->
-      <path d="M8 47c9-4 17-4 24 0c7-4 15-4 24 0v7c-9-4-17-4-24 0c-7-4-15-4-24 0z" fill="#fff"/>
+      <path d="M35 150c25-10 50-10 65 0c15-10 40-10 65 0v12c-25-10-50-10-65 0c-15-10-40-10-65 0z" fill="#fff"/>
       <!-- alpaca simplificada -->
-      <path d="M32 20c2-3 7-2 8 1l2 5c1 3 0 6-1 9l-3 6c-1 2-1 5-2 8h-3v-7c-2-2-3-5-4-8-2 3-4 6-7 8l-2 7h-3l1-9c0-2 1-3 2-4-3-1-5-3-5-6 0-3 2-5 4-6h2c7-6 14-9 23-9z" fill="#fff"/>
-      <!-- foco/idea -->
-      <circle cx="45" cy="15" r="6" fill="none" stroke="#fff" stroke-width="2"/>
-      <path d="M45 22v2m-5-3l-2 2m12-2l2 2m-14-7h-3m20 0h3m-11-5v-3" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      <path d="M92 74c3-7 14-6 16 1l4 10c2 6 1 12-1 18l-7 14c-2 5-2 11-4 18h-8v-15c-4-4-6-9-8-14-4 6-9 11-14 14l-4 15h-7l2-18c0-5 2-7 4-9-6-2-10-6-10-12 0-6 4-10 8-12h4c14-12 29-18 47-19z" fill="#fff"/>
+      <!-- foco -->
+      <circle cx="145" cy="55" r="16" fill="none" stroke="#fff" stroke-width="4"/>
+      <path d="M145 73v5m-12-6l-4 4m28-4l4 4m-35-17h-8m44 0h8m-21-12v-8" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
     </svg>
   </div>
-  <div>
-    <div style="font-weight:700">AIRL‑Platform</div>
-    <div class="muted">Intelligent Robotics for Education</div>
+
+  <div class="title-box">
+    <div class="title">AIRL‑Platform</div>
+    <div class="subtitle">Intelligent Robotics for Education</div>
   </div>
 </header>
 
@@ -118,7 +125,7 @@
             <h3 style="margin:0 0 8px 0">Asistente especialista</h3>
             <div class="chat">
               <div class="msgs" id="msgs">
-                <div class="muted">Hi, I'm<b>Al-paquita 🦙</b>.How can I assist you today?.</div>
+                <div class="muted">Hi, I'm <b> Al-paquita 🦙 </b> .How can I assist you today?. </div>
               </div>
               <div class="composer">
                 <input id="input" placeholder="Escribe tu ejercicio o pregunta…" />
