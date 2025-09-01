@@ -252,6 +252,54 @@
           </table>
         </div>
 
+
+        <!-- Game control -->
+<div class="card">
+  <h3>Game control</h3>
+  
+  <!-- Emociones -->
+  <div>
+    <h4>Emociones</h4>
+    <button onclick="sendCmd('happy')">Happy 😊</button>
+    <button onclick="sendCmd('sad')">Sad 😢</button>
+    <button onclick="sendCmd('surprised')">Surprised 😲</button>
+    <button onclick="sendCmd('angry')">Angry 😠</button>
+    <button onclick="sendCmd('bark')">Bark 🐕</button>
+  </div>
+  
+  <!-- Poses -->
+  <div>
+    <h4>Poses</h4>
+    <button onclick="sendCmd('sit')">Sentado/sid</button>
+    <button onclick="sendCmd('paw')">Da la Pata/hand</button>
+  </div>
+  
+  <!-- Movimiento con Flechas (Joystick Simple) -->
+  <div>
+    <h4>Movimiento</h4>
+    <div style="display: grid; grid-template-columns: repeat(3, 50px); gap: 5px; justify-content: center;">
+      <button></button> <!-- Vacío -->
+      <button onclick="sendCmd('move:forward')">↑</button>
+      <button></button> <!-- Vacío -->
+      <button onclick="sendCmd('move:left')">←</button>
+      <button onclick="sendCmd('stop')">Stop</button>
+      <button onclick="sendCmd('move:right')">→</button>
+      <button></button> <!-- Vacío -->
+      <button onclick="sendCmd('move:backward')">↓</button>
+      <button></button> <!-- Vacío -->
+    </div>
+  </div>
+  
+  <!-- Servos Individuales (Sliders) -->
+  <div>
+    <h4>Servos Manual</h4>
+    <label>PDR: <input type="range" id="servo-pdr" min="0" max="180" value="90" onchange="sendServo('pdr', this.value)"></label><br>
+    <label>PDI: <input type="range" id="servo-pdi" min="0" max="180" value="90" onchange="sendServo('pdi', this.value)"></label><br>
+    <label>PTR: <input type="range" id="servo-ptr" min="0" max="180" value="90" onchange="sendServo('ptr', this.value)"></label><br>
+    <label>PTI: <input type="range" id="servo-pti" min="0" max="180" value="90" onchange="sendServo('pti', this.value)"></label>
+  </div>
+</div>
+
         <!-- Asistente rápido en el Lab -->
         <div class="card" style="margin-top:12px;">
           <h3>Asistente del Laboratorio</h3>

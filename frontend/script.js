@@ -604,3 +604,20 @@ if (labAskSend) labAskSend.onclick = () => {
     setTimeout(() => { document.getElementById("btn-send")?.click(); }, 50);
   }
 };
+
+// Nueva función para servos individuales
+function sendServo(servoId, angle) {
+  try {
+    const deviceId = pairDeviceEl?.value?.trim() || pairGet();
+    if (!deviceId) return alert("Empareja un Device ID primero.");
+    if (!mqttClient || !mqttClient.connected) return alert("Conéctate a MQTT primero.");
+
+    const cmd = `servo:${servoId}:${angle}`;
+    const payload = JSON.stringify({ cmd, data: {}, ts: Date.now() });
+    const t = topicFor(deviceId, "cmd");
+    mqttClient.publish(t, payload, { qos: 0 }, (err) => err ? log("❌ publish", err) : log("📤", t, payload));
+  } catch (e) {
+    console.error("sendServo error:", e);
+    log("sendServo error:", e?.message || e);
+  }
+}
